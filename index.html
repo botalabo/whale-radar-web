@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BOTALAB WHALE RADAR</title>
+<title>BOTALAB WHALE RADAR v4.1</title>
 <style>
   /* ============================================
      Cyberpunk Palette — whale_radar_gui.py 準拠
@@ -20,6 +20,9 @@
     --card-bg:     #1A1A25;
     --dim-text:    #556677;
     --white-text:  #E0E0E0;
+    --price-up:    #00FF41;
+    --price-down:  #FF0040;
+    --price-flat:  #556677;
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -27,9 +30,11 @@
   body {
     background: var(--dark-bg);
     color: var(--white-text);
-    font-family: 'Courier New', 'Consolas', 'SF Mono', monospace;
-    min-height: 100vh;
-    line-height: 1.5;
+    font-family: 'Consolas', 'Courier New', 'SF Mono', monospace;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
   }
 
   /* Grid overlay */
@@ -58,508 +63,822 @@
     z-index: 9999;
   }
 
-  .wrap {
+  /* ============================================ MARQUEE */
+  .marquee-row {
     position: relative;
     z-index: 1;
-    max-width: 1280px;
-    margin: 0 auto;
-    padding: 12px;
+    height: 28px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+  }
+  .marquee-row-1 { background: #0A0A00; }
+  .marquee-row-2 { background: #0F0800; }
+
+  .marquee-track {
+    display: inline-block;
+    white-space: nowrap;
+    animation: marquee-scroll 40s linear infinite;
+    font-size: 13px;
+    font-weight: bold;
+    padding-left: 100%;
+  }
+  .marquee-row-1 .marquee-track { color: var(--neon-yellow); }
+  .marquee-row-2 .marquee-track { color: var(--neon-orange); }
+
+  @keyframes marquee-scroll {
+    0%   { transform: translateX(0); }
+    100% { transform: translateX(-100%); }
   }
 
   /* ============================================ HEADER */
   .header {
+    position: relative;
+    z-index: 1;
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 10px;
     background: var(--panel-bg);
-    border: 1px solid rgba(0,229,255,.2);
-    border-radius: 10px;
-    padding: 14px 20px;
-    margin-bottom: 12px;
+    height: 60px;
+    padding: 0 15px;
+    flex-shrink: 0;
   }
 
-  .header-left {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .live-dot {
-    width: 10px; height: 10px;
-    border-radius: 50%;
-    background: var(--neon-red);
-    box-shadow: 0 0 8px var(--neon-red);
-    animation: blink 1s ease-in-out infinite;
-  }
-  @keyframes blink { 50% { opacity: .25; } }
-
-  .header h1 {
+  .header-title {
     font-size: 20px;
-    color: var(--neon-cyan);
-    text-shadow: 0 0 16px rgba(0,229,255,.5);
-    letter-spacing: 2px;
+    font-weight: bold;
+    color: var(--neon-green);
+    text-shadow: 0 0 16px rgba(0,255,65,.4);
+    letter-spacing: 3px;
     white-space: nowrap;
   }
 
-  .header h1 .whale-icon { font-style: normal; }
-
-  .header-right {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    font-size: 11px;
-    color: var(--dim-text);
+  .live-label {
+    font-size: 14px;
+    font-weight: bold;
+    margin-left: 12px;
+    white-space: nowrap;
   }
 
-  .header-right .cyan  { color: var(--neon-cyan); }
-  .header-right .orange { color: var(--neon-orange); animation: pulse 1.4s ease-in-out infinite; }
-  @keyframes pulse { 50% { opacity: .35; } }
+  .header-sub {
+    font-size: 10px;
+    color: var(--dim-text);
+    margin-left: 12px;
+    white-space: nowrap;
+  }
+
+  .header-right {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .header-clock {
+    font-size: 14px;
+    color: var(--neon-cyan);
+    text-shadow: 0 0 8px rgba(0,229,255,.3);
+  }
+
+  /* ============================================ MAIN AREA */
+  .main-area {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    padding: 5px 10px;
+    gap: 10px;
+  }
+
+  /* ============================================ LEFT PANEL */
+  .left-panel {
+    width: 310px;
+    min-width: 310px;
+    background: var(--panel-bg);
+    border: 1px solid #1E1E2E;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .status-indicator {
+    text-align: center;
+    font-size: 11px;
+    font-weight: bold;
+    padding: 6px 0 2px;
+  }
+  .status-indicator.online { color: var(--neon-green); }
+  .status-indicator.offline { color: var(--dim-text); }
+
+  /* Progress section */
+  .progress-section {
+    margin: 0 10px 3px;
+    background: var(--card-bg);
+    border: 1px solid #2A2A3A;
+    border-radius: 4px;
+    padding: 4px 8px;
+  }
+
+  .progress-ticker {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: bold;
+    color: var(--neon-cyan);
+    padding: 2px 0;
+  }
+
+  .spinner {
+    display: inline-block;
+    width: 14px;
+    text-align: center;
+  }
+
+  .progress-bar-wrap {
+    background: #1A1A25;
+    border-radius: 3px;
+    height: 10px;
+    overflow: hidden;
+  }
+
+  .progress-bar-fill {
+    height: 100%;
+    background: var(--neon-green);
+    border-radius: 3px;
+    width: 0%;
+    transition: width 0.5s ease;
+  }
+
+  .progress-pct {
+    text-align: center;
+    font-size: 9px;
+    color: var(--dim-text);
+    padding: 2px 0;
+  }
+
+  /* Price section */
+  .price-section-header {
+    text-align: center;
+    font-size: 10px;
+    color: var(--dim-text);
+    padding: 4px 0 2px;
+  }
+
+  .price-grid-wrap {
+    flex: 1;
+    margin: 0 10px;
+    background: var(--card-bg);
+    border: 1px solid #2A2A3A;
+    border-radius: 6px;
+    overflow-y: auto;
+    padding: 4px;
+  }
+
+  .price-grid-wrap::-webkit-scrollbar { width: 4px; }
+  .price-grid-wrap::-webkit-scrollbar-track { background: transparent; }
+  .price-grid-wrap::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+
+  .price-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2px;
+  }
+
+  .price-cell {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 3px 6px;
+    border-radius: 3px;
+    background: rgba(0,0,0,.2);
+  }
+  .price-cell:hover { background: rgba(0,229,255,.05); }
+
+  .price-ticker {
+    font-size: 11px;
+    font-weight: bold;
+    color: var(--neon-green);
+    cursor: default;
+  }
+
+  .price-value {
+    font-size: 10px;
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  /* Summary section */
+  .summary-section {
+    margin: 4px 10px 6px;
+    background: var(--card-bg);
+    border: 1px solid #2A2A3A;
+    border-radius: 4px;
+    padding: 6px 8px;
+  }
+
+  .summary-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    padding: 1px 0;
+  }
+
+  .summary-label { color: var(--dim-text); }
+  .summary-value { font-weight: bold; }
+  .summary-value.whale { color: var(--neon-green); }
+  .summary-value.spoof { color: var(--neon-yellow); }
+  .summary-value.insider { color: var(--neon-pink); }
+  .summary-value.total { color: var(--neon-cyan); }
+
+  /* ============================================ RIGHT PANEL */
+  .right-panel {
+    flex: 1;
+    background: var(--panel-bg);
+    border: 1px solid #1E1E2E;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* Prediction box (top 40%) */
+  .prediction-section {
+    flex: 2;
+    display: flex;
+    flex-direction: column;
+    padding: 8px 8px 4px;
+    min-height: 0;
+  }
+
+  .section-title {
+    font-size: 13px;
+    font-weight: bold;
+    padding-bottom: 4px;
+    white-space: nowrap;
+  }
+  .section-title.green { color: var(--neon-green); }
+  .section-title.red   { color: var(--neon-red); }
+
+  .log-box {
+    flex: 1;
+    border-radius: 4px;
+    border-width: 1px;
+    border-style: solid;
+    overflow-y: auto;
+    padding: 6px 8px;
+    font-size: 13px;
+    line-height: 1.6;
+    word-wrap: break-word;
+    min-height: 0;
+  }
+
+  .log-box::-webkit-scrollbar { width: 5px; }
+  .log-box::-webkit-scrollbar-track { background: transparent; }
+  .log-box::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+
+  .prediction-box {
+    background: #080D06;
+    border-color: #1E2E1E;
+    color: var(--white-text);
+  }
+
+  /* Alert history box (bottom 60%) */
+  .alert-section {
+    flex: 3;
+    display: flex;
+    flex-direction: column;
+    padding: 4px 8px 8px;
+    min-height: 0;
+  }
+
+  .alert-box {
+    background: #0D0006;
+    border-color: #2A0015;
+    color: var(--white-text);
+  }
+
+  /* Disclaimer */
+  .disclaimer {
+    flex-shrink: 0;
+    margin-top: 4px;
+    background: var(--card-bg);
+    border: 1px solid #2A2A3A;
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 10px;
+    color: var(--dim-text);
+    line-height: 1.4;
+  }
+
+  /* Log line colors */
+  .log-box .c-green  { color: var(--neon-green); }
+  .log-box .c-cyan   { color: var(--neon-cyan); }
+  .log-box .c-red    { color: var(--neon-red); }
+  .log-box .c-yellow { color: var(--neon-yellow); }
+  .log-box .c-orange { color: var(--neon-orange); }
+  .log-box .c-pink   { color: var(--neon-pink); }
+  .log-box .c-dim    { color: var(--dim-text); }
+  .log-box .c-white  { color: var(--white-text); }
+
+  .log-box .b-green  { color: var(--neon-green); font-weight: bold; font-size: 14px; }
+  .log-box .b-red    { color: var(--neon-red); font-weight: bold; font-size: 14px; }
+  .log-box .b-cyan   { color: var(--neon-cyan); font-weight: bold; font-size: 14px; }
+  .log-box .b-yellow { color: var(--neon-yellow); font-weight: bold; font-size: 14px; }
+  .log-box .b-orange { color: var(--neon-orange); font-weight: bold; font-size: 14px; background: #331500; padding: 0 2px; border-radius: 2px; }
+
+  .log-line {
+    padding: 1px 0;
+    border-bottom: 1px solid rgba(255,255,255,.02);
+  }
 
   /* ============================================ STATUS BAR */
   .status-bar {
+    position: relative;
+    z-index: 1;
     display: flex;
     align-items: center;
-    gap: 16px;
-    flex-wrap: wrap;
+    justify-content: space-between;
     background: var(--panel-bg);
-    border: 1px solid rgba(255,230,0,.12);
-    border-radius: 8px;
-    padding: 10px 16px;
-    margin-bottom: 12px;
+    height: 28px;
+    padding: 0 12px;
     font-size: 11px;
-    color: var(--dim-text);
+    flex-shrink: 0;
   }
 
-  .status-bar .label { color: var(--neon-yellow); font-weight: bold; }
-  .status-bar .val   { color: var(--white-text); }
-
-  /* ============================================ STATS */
-  .stats {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 10px;
-    margin-bottom: 12px;
-  }
-
-  .stat {
-    background: var(--card-bg);
-    border: 1px solid rgba(0,229,255,.08);
-    border-radius: 8px;
-    padding: 14px;
-    text-align: center;
-    transition: border-color .3s;
-  }
-  .stat:hover { border-color: var(--neon-cyan); }
-
-  .stat .lbl {
-    font-size: 9px;
-    color: var(--dim-text);
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    margin-bottom: 6px;
-  }
-  .stat .num { font-size: 26px; font-weight: bold; }
-  .stat.s-total .num { color: var(--neon-cyan);   text-shadow: 0 0 10px rgba(0,229,255,.4); }
-  .stat.s-whale .num { color: var(--neon-green);  text-shadow: 0 0 10px rgba(0,255,65,.4); }
-  .stat.s-spoof .num { color: var(--neon-yellow); text-shadow: 0 0 10px rgba(255,230,0,.4); }
-  .stat.s-insider .num { color: var(--neon-pink); text-shadow: 0 0 10px rgba(255,45,106,.4); }
-
-  /* ============================================ PANELS */
-  .panels {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-    margin-bottom: 12px;
-  }
-
-  .panel {
-    background: var(--panel-bg);
-    border: 1px solid rgba(0,229,255,.12);
-    border-radius: 10px;
-    padding: 14px;
-    max-height: 480px;
-    overflow-y: auto;
-  }
-
-  .panel::-webkit-scrollbar { width: 5px; }
-  .panel::-webkit-scrollbar-track { background: transparent; }
-  .panel::-webkit-scrollbar-thumb { background: var(--dim-text); border-radius: 3px; }
-
-  .panel.full { grid-column: 1 / -1; }
-
-  .panel-hdr {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 10px;
-    padding-bottom: 8px;
-    border-bottom: 1px solid rgba(255,255,255,.04);
-  }
-  .panel-hdr .ico { font-size: 16px; }
-  .panel-hdr h2 { font-size: 13px; letter-spacing: 1px; }
-  .panel-hdr .cnt {
-    margin-left: auto;
-    font-size: 11px;
-    padding: 2px 10px;
-    border-radius: 10px;
-    font-weight: bold;
-  }
-
-  .p-whale .panel-hdr h2 { color: var(--neon-green); }
-  .p-whale .cnt { background: rgba(0,255,65,.12); color: var(--neon-green); }
-
-  .p-spoof .panel-hdr h2 { color: var(--neon-yellow); }
-  .p-spoof .cnt { background: rgba(255,230,0,.12); color: var(--neon-yellow); }
-
-  .p-insider .panel-hdr h2 { color: var(--neon-pink); }
-  .p-insider .cnt { background: rgba(255,45,106,.12); color: var(--neon-pink); }
-
-  /* ============================================ ALERT ITEMS */
-  .item {
-    background: var(--card-bg);
-    border-left: 3px solid;
-    border-radius: 5px;
-    padding: 10px 12px;
-    margin-bottom: 6px;
-    transition: background .2s;
-  }
-  .item:hover { background: #222233; }
-
-  .item.w-call    { border-color: var(--neon-green); }
-  .item.w-put     { border-color: var(--neon-red); }
-  .item.sp-ask    { border-color: var(--neon-yellow); }
-  .item.sp-bid    { border-color: var(--neon-orange); }
-  .item.ins       { border-color: var(--neon-pink); }
-
-  .row1 {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
-  }
-
-  .tkr {
-    font-size: 14px;
-    font-weight: bold;
-    min-width: 48px;
-  }
-  .tkr.call  { color: var(--neon-green); }
-  .tkr.put   { color: var(--neon-red); }
-  .tkr.sp    { color: var(--neon-yellow); }
-  .tkr.ins   { color: var(--neon-pink); }
-
-  .badge {
-    font-size: 9px;
-    padding: 1px 7px;
-    border-radius: 3px;
-    font-weight: bold;
-    letter-spacing: .5px;
-  }
-  .b-call { background: rgba(0,255,65,.12);  color: var(--neon-green); }
-  .b-put  { background: rgba(255,0,64,.12);  color: var(--neon-red); }
-  .b-ask  { background: rgba(255,230,0,.12); color: var(--neon-yellow); }
-  .b-bid  { background: rgba(255,136,0,.12); color: var(--neon-orange); }
-  .b-buy  { background: rgba(255,45,106,.12); color: var(--neon-pink); }
-
-  .meta {
-    margin-left: auto;
-    font-size: 11px;
-    color: var(--dim-text);
-    display: flex;
-    gap: 12px;
-  }
-  .meta .hi { color: var(--neon-orange); }
-
-  .sub {
-    font-size: 10px;
-    color: var(--dim-text);
-    margin-top: 4px;
-  }
-
-  .ts {
-    font-size: 9px;
-    color: #444;
-    margin-top: 3px;
-  }
-
-  .empty {
-    text-align: center;
-    color: var(--dim-text);
-    font-size: 11px;
-    padding: 20px;
-  }
-
-  /* ============================================ FOOTER */
-  .footer {
-    text-align: center;
-    font-size: 9px;
-    color: var(--dim-text);
-    padding: 8px;
-    letter-spacing: 1px;
-  }
-  .footer .cyan { color: var(--neon-cyan); }
+  .status-bar-left { color: var(--dim-text); }
+  .status-bar-right { color: #333344; }
 
   /* ============================================ RESPONSIVE */
   @media (max-width: 768px) {
-    .stats { grid-template-columns: repeat(2, 1fr); }
-    .panels { grid-template-columns: 1fr; }
-    .header { flex-direction: column; align-items: flex-start; }
+    .main-area {
+      flex-direction: column;
+    }
+    .left-panel {
+      width: 100%;
+      min-width: 100%;
+      max-height: 300px;
+    }
+    .price-grid {
+      grid-template-columns: 1fr 1fr 1fr;
+    }
+    .header-sub { display: none; }
   }
 </style>
 </head>
 <body>
-<div class="wrap">
 
-  <!-- ======== HEADER ======== -->
-  <div class="header">
-    <div class="header-left">
-      <div class="live-dot" id="liveDot"></div>
-      <h1><i class="whale-icon">&#x1F40B;</i> BOTALAB WHALE RADAR</h1>
-    </div>
-    <div class="header-right">
-      <span id="scanStatus" class="cyan">起動中...</span>
-      <span>|</span>
-      <span>スキャン: <span id="scanCount">0</span>回</span>
-      <span>|</span>
-      <span>最終更新: <span id="lastUpdate">--:--:--</span></span>
-    </div>
+<!-- ======== MARQUEE ROW 1 (Yellow) ======== -->
+<div class="marquee-row marquee-row-1">
+  <div class="marquee-track" id="marquee1">
+    &#x1F40B; Botalab Whale Radar &#x2500; 米国株オプション・異常板・インサイダー リアルタイム監視システム &#x2500; 大口の動きを可視化して個人投資家をサポート &#x2500; データ: yfinance + finviz &#x2500; Anti-Spoofing STREAM Edition &#x2500;
   </div>
+</div>
 
-  <!-- ======== STATUS BAR ======== -->
-  <div class="status-bar">
-    <span><span class="label">状態</span> <span class="val" id="statusText">待機中...</span></span>
-    <span><span class="label">次回スキャン</span> <span class="val" id="nextScan">--:--:--</span></span>
-    <span><span class="label">監視銘柄数</span> <span class="val" id="tickerCount">0</span></span>
-    <span><span class="label">自動更新</span> <span class="val" id="refreshTimer">5:00</span></span>
+<!-- ======== MARQUEE ROW 2 (Orange / Alert) ======== -->
+<div class="marquee-row marquee-row-2">
+  <div class="marquee-track" id="marquee2" style="animation-duration:35s;">
+    &#x23F3; アラート待機中...
   </div>
+</div>
 
-  <!-- ======== STATS ======== -->
-  <div class="stats">
-    <div class="stat s-total">
-      <div class="lbl">検知アラート合計</div>
-      <div class="num" id="stTotal">0</div>
-    </div>
-    <div class="stat s-whale">
-      <div class="lbl">大口オプション</div>
-      <div class="num" id="stWhale">0</div>
-    </div>
-    <div class="stat s-spoof">
-      <div class="lbl">異常板（壁）</div>
-      <div class="num" id="stSpoof">0</div>
-    </div>
-    <div class="stat s-insider">
-      <div class="lbl">インサイダー購入</div>
-      <div class="num" id="stInsider">0</div>
-    </div>
+<!-- ======== HEADER ======== -->
+<div class="header">
+  <span class="header-title">&#x1F40B; BOTALAB WHALE RADAR v4.1</span>
+  <span class="live-label" id="liveLabel">&#x25CF; LIVE</span>
+  <span class="header-sub">WEB EDITION</span>
+  <div class="header-right">
+    <span class="header-clock" id="clock">--:--:--</span>
   </div>
+</div>
 
-  <!-- ======== ALERT PANELS ======== -->
-  <div class="panels">
-    <!-- 大口オプション -->
-    <div class="panel p-whale">
-      <div class="panel-hdr">
-        <span class="ico">&#x1F6A8;</span>
-        <h2>大口オプション検知</h2>
-        <span class="cnt" id="cntWhale">0</span>
+<!-- ======== MAIN AREA (2-column) ======== -->
+<div class="main-area">
+
+  <!-- LEFT PANEL -->
+  <div class="left-panel">
+    <!-- ONLINE/OFFLINE -->
+    <div class="status-indicator offline" id="statusIndicator">&#x25CF; OFFLINE</div>
+
+    <!-- Progress -->
+    <div class="progress-section">
+      <div class="progress-ticker">
+        <span class="spinner" id="spinner"></span>
+        <span id="progressText">待機中...</span>
       </div>
-      <div id="listWhale"><div class="empty">大口アラートなし</div></div>
+      <div class="progress-bar-wrap">
+        <div class="progress-bar-fill" id="progressBar"></div>
+      </div>
+      <div class="progress-pct" id="progressPct">0 %</div>
     </div>
 
-    <!-- 異常板 -->
-    <div class="panel p-spoof">
-      <div class="panel-hdr">
-        <span class="ico">&#x26A0;&#xFE0F;</span>
-        <h2>異常板（壁）検知</h2>
-        <span class="cnt" id="cntSpoof">0</span>
-      </div>
-      <div id="listSpoof"><div class="empty">異常板アラートなし</div></div>
+    <!-- Price section header -->
+    <div class="price-section-header" id="priceHeader">&#x2500;&#x2500; LIVE PRICES (0) &#x2500;&#x2500;</div>
+
+    <!-- Price grid -->
+    <div class="price-grid-wrap">
+      <div class="price-grid" id="priceGrid"></div>
     </div>
 
-    <!-- インサイダー -->
-    <div class="panel p-insider full">
-      <div class="panel-hdr">
-        <span class="ico">&#x1F575;&#xFE0F;</span>
-        <h2>インサイダー購入検知</h2>
-        <span class="cnt" id="cntInsider">0</span>
+    <!-- Summary -->
+    <div class="summary-section">
+      <div class="summary-row">
+        <span class="summary-label">&#x1F6A8; 大口オプション</span>
+        <span class="summary-value whale" id="sumWhale">0</span>
       </div>
-      <div id="listInsider"><div class="empty">インサイダー購入なし</div></div>
+      <div class="summary-row">
+        <span class="summary-label">&#x26A0;&#xFE0F; 異常板（壁）</span>
+        <span class="summary-value spoof" id="sumSpoof">0</span>
+      </div>
+      <div class="summary-row">
+        <span class="summary-label">&#x1F575;&#xFE0F; インサイダー</span>
+        <span class="summary-value insider" id="sumInsider">0</span>
+      </div>
+      <div class="summary-row" style="border-top:1px solid #2A2A3A; margin-top:2px; padding-top:3px;">
+        <span class="summary-label">合計アラート</span>
+        <span class="summary-value total" id="sumTotal">0</span>
+      </div>
     </div>
   </div>
 
-  <!-- ======== FOOTER ======== -->
-  <div class="footer">
-    BOTALAB WHALE RADAR &mdash; 自動更新: <span class="cyan" id="footerTimer">5:00</span>
-    &nbsp;|&nbsp; データ: yfinance + finviz
+  <!-- RIGHT PANEL -->
+  <div class="right-panel">
+    <!-- Prediction / Judgment History -->
+    <div class="prediction-section">
+      <div class="section-title green">&#x1F3AF; クジラの予測・判定履歴 (SENTIMENT RECORD)</div>
+      <div class="log-box prediction-box" id="predictionBox">
+        <div class="log-line c-dim">センチメント解析待機中...</div>
+      </div>
+    </div>
+
+    <!-- Whale Alert History -->
+    <div class="alert-section">
+      <div class="section-title red">&#x1F6A8; WHALE ALERT 履歴</div>
+      <div class="log-box alert-box" id="alertBox">
+        <div class="log-line c-dim">アラート待機中...</div>
+      </div>
+      <div class="disclaimer">
+        &#x26A0;&#xFE0F; 異常板：必ずしもフェイクとは限りません。大口の実需が含まれる可能性もあり、板の厚みの変化を示す指標です。<br>
+        判定基準：各価格帯の注文サイズを銘柄ごとの平均的な板の厚みと比較し、10倍以上の異常サイズを検知しています。
+      </div>
+    </div>
   </div>
 
 </div>
 
+<!-- ======== STATUS BAR ======== -->
+<div class="status-bar">
+  <span class="status-bar-left" id="statusBarLeft">Ready. | スキャン: 0回 | 次回更新: --:--:--</span>
+  <span class="status-bar-right">Botalab Whale Radar v4.1 Anti-Spoofing WEB</span>
+</div>
+
 <script>
 /* ============================================================
-   Whale Radar — Dashboard JS
+   Whale Radar v4.1 — Web Dashboard JS
    ============================================================ */
 const API = window.location.origin;
-const REFRESH_MS = 5 * 60 * 1000;
-let countdown = REFRESH_MS / 1000;
-let cdTimer = null;
+const REFRESH_MS = 10_000;  // 10秒ごとにポーリング
 
-/* ---------- fetch ---------- */
+// Spinner frames
+const SPINNER_FRAMES = ['\u25D0', '\u25D3', '\u25D1', '\u25D2'];
+let spinnerIdx = 0;
+
+// LIVE pulse state
+let livePulseStep = 0;
+
+/* ============================================================
+   Clock
+   ============================================================ */
+function updateClock() {
+  const now = new Date();
+  const h = String(now.getHours()).padStart(2, '0');
+  const m = String(now.getMinutes()).padStart(2, '0');
+  const s = String(now.getSeconds()).padStart(2, '0');
+  document.getElementById('clock').textContent = `${h}:${m}:${s}`;
+}
+
+/* ============================================================
+   LIVE pulse animation (sin-wave like desktop)
+   ============================================================ */
+function animateLivePulse() {
+  livePulseStep++;
+  const brightness = (Math.sin(livePulseStep * 0.15) + 1) / 2;
+  // Interpolate between #550018 (dim) and #FF0040 (bright)
+  const r = Math.round(0x55 + (0xFF - 0x55) * brightness);
+  const g = Math.round(0x00 + (0x00 - 0x00) * brightness);
+  const b = Math.round(0x18 + (0x40 - 0x18) * brightness);
+  const color = `#${r.toString(16).padStart(2,'0')}${g.toString(16).padStart(2,'0')}${b.toString(16).padStart(2,'0')}`;
+  document.getElementById('liveLabel').style.color = color;
+  document.getElementById('liveLabel').style.textShadow = `0 0 ${Math.round(8 * brightness)}px ${color}`;
+}
+
+/* ============================================================
+   Spinner animation
+   ============================================================ */
+function animateSpinner(isScanning) {
+  const el = document.getElementById('spinner');
+  if (isScanning) {
+    spinnerIdx = (spinnerIdx + 1) % SPINNER_FRAMES.length;
+    el.textContent = SPINNER_FRAMES[spinnerIdx];
+  } else {
+    el.textContent = '';
+  }
+}
+
+/* ============================================================
+   Build price grid
+   ============================================================ */
+function buildPriceGrid(watchlist) {
+  const grid = document.getElementById('priceGrid');
+  grid.innerHTML = '';
+  for (const sym of watchlist) {
+    const cell = document.createElement('div');
+    cell.className = 'price-cell';
+    cell.innerHTML = `<span class="price-ticker">${sym}</span><span class="price-value" id="price_${sym}" style="color:var(--dim-text)">---</span>`;
+    grid.appendChild(cell);
+  }
+  document.getElementById('priceHeader').textContent = `── LIVE PRICES (${watchlist.length}) ──`;
+}
+
+/* ============================================================
+   Update price labels
+   ============================================================ */
+function updatePrices(tickers) {
+  for (const [sym, info] of Object.entries(tickers)) {
+    const el = document.getElementById('price_' + sym);
+    if (!el) continue;
+    if (info.price) {
+      const p = info.price.price;
+      const ch = info.price.change;
+      const pct = info.price.change_pct;
+      const sign = ch >= 0 ? '+' : '';
+      let color;
+      if (ch > 0) color = 'var(--price-up)';
+      else if (ch < 0) color = 'var(--price-down)';
+      else color = 'var(--price-flat)';
+      el.style.color = color;
+      el.textContent = `$${p.toFixed(2)} ${sign}${pct.toFixed(1)}%`;
+    } else {
+      el.style.color = 'var(--dim-text)';
+      el.textContent = '---';
+    }
+  }
+}
+
+/* ============================================================
+   Build sentiment (prediction) log
+   ============================================================ */
+function renderPredictions(tickers) {
+  const box = document.getElementById('predictionBox');
+  const lines = [];
+
+  for (const [sym, info] of Object.entries(tickers)) {
+    if (!info.sentiment_text) continue;
+    const text = info.sentiment_text;
+    // Determine color class based on sentiment
+    let cls = 'c-white';
+    if (info.sentiment === 'bullish') cls = 'b-green';
+    else if (info.sentiment === 'bearish') cls = 'b-red';
+    else if (info.sentiment === 'neutral') cls = 'c-dim';
+
+    if (info.whale_alerts && info.whale_alerts.length > 0) {
+      lines.push(`<div class="log-line ${cls}">${escHtml(text)}</div>`);
+    }
+  }
+
+  if (lines.length === 0) {
+    box.innerHTML = '<div class="log-line c-dim">センチメント解析待機中...</div>';
+  } else {
+    box.innerHTML = lines.join('');
+  }
+}
+
+/* ============================================================
+   Build alert history log
+   ============================================================ */
+function renderAlertHistory(tickers, history) {
+  const box = document.getElementById('alertBox');
+  const lines = [];
+
+  // Iterate tickers for current scan alerts (with text_jp)
+  for (const [sym, info] of Object.entries(tickers)) {
+    // Whale alerts
+    if (info.whale_alerts) {
+      for (const a of info.whale_alerts) {
+        const text = a.text_jp || formatWhaleAlert(a);
+        const cls = a.option_type === 'CALL' ? 'c-cyan' : 'c-orange';
+        lines.push({ time: a.detected_at || '', html: `<div class="log-line ${cls}">${escHtml(text)}</div>` });
+      }
+    }
+    // Spoofing alerts
+    if (info.spoofing_alerts) {
+      for (const a of info.spoofing_alerts) {
+        const text = a.text_jp || formatSpoofingAlert(a);
+        lines.push({ time: a.detected_at || '', html: `<div class="log-line c-yellow">${escHtml(text)}</div>` });
+      }
+    }
+    // Insider alerts
+    if (info.insider_alerts) {
+      for (const a of info.insider_alerts) {
+        const text = a.text_jp || formatInsiderAlert(a);
+        lines.push({ time: a.detected_at || '', html: `<div class="log-line c-pink">${escHtml(text)}</div>` });
+      }
+    }
+  }
+
+  if (lines.length === 0) {
+    box.innerHTML = '<div class="log-line c-dim">アラート待機中...</div>';
+  } else {
+    box.innerHTML = lines.map(l => l.html).join('');
+  }
+}
+
+/* ============================================================
+   Update alert marquee
+   ============================================================ */
+function updateAlertMarquee(tickers) {
+  const items = [];
+  for (const [sym, info] of Object.entries(tickers)) {
+    if (info.whale_alerts) {
+      for (const a of info.whale_alerts) {
+        const dir = a.option_type === 'CALL' ? '\u{1F4C8}' : '\u{1F4C9}';
+        items.push(`\u{1F40B} ${a.ticker} ${dir} $${a.strike} vol:${a.volume.toLocaleString()}`);
+      }
+    }
+    if (info.spoofing_alerts) {
+      for (const a of info.spoofing_alerts) {
+        const side = a.wall_side === 'ASK' ? '\u58F2\u308A\u58C1' : '\u8CB7\u3044\u58C1';
+        items.push(`\u26A0 ${a.ticker} ${side} $${a.strike} ${a.wall_size.toLocaleString()}\u679A`);
+      }
+    }
+    if (info.insider_alerts) {
+      for (const a of info.insider_alerts) {
+        items.push(`\u{1F575} ${a.ticker} ${a.insider_name} ${a.value}`);
+      }
+    }
+  }
+
+  const el = document.getElementById('marquee2');
+  if (items.length > 0) {
+    el.textContent = items.join('  |  ') + '  |  ';
+  } else {
+    el.textContent = '\u23F3 \u30A2\u30E9\u30FC\u30C8\u5F85\u6A5F\u4E2D...';
+  }
+}
+
+/* ============================================================
+   Fallback formatters
+   ============================================================ */
+function formatWhaleAlert(a) {
+  const dir = a.option_type === 'CALL' ? '\u{1F4C8}\u4E0A\u6607' : '\u{1F4C9}\u4E0B\u843D';
+  const r = (a.ratio === null || a.ratio >= 999) ? '\u221E\u500D(\u65B0\u898F)' : a.ratio + '\u500D';
+  return `\u{1F40B} ${a.ticker} | ${a.option_type} $${a.strike} | ${dir} | vol:${a.volume.toLocaleString()} (${r}) | ${a.expiry}`;
+}
+
+function formatSpoofingAlert(a) {
+  const side = a.wall_side === 'ASK' ? '\u58F2\u308A\u58C1' : '\u8CB7\u3044\u58C1';
+  return `\u26A0 ${a.ticker} | ${side} $${a.strike} | ${a.wall_size.toLocaleString()}\u679A (${a.size_ratio}\u500D) | ${a.option_type} ${a.expiry}`;
+}
+
+function formatInsiderAlert(a) {
+  return `\u{1F575} ${a.ticker} | ${a.insider_name} (${a.relationship}) | ${a.transaction} ${a.value} | ${a.date}`;
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+/* ============================================================
+   Main fetch + render
+   ============================================================ */
+let watchlistBuilt = false;
+let prevScanCount = -1;
+
 async function load() {
-  const st = document.getElementById('scanStatus');
-  st.className = 'orange';
-  st.textContent = '取得中...';
   try {
     const [alertsRes, statusRes] = await Promise.all([
       fetch(API + '/api/alerts'),
       fetch(API + '/api/status'),
     ]);
     if (!alertsRes.ok || !statusRes.ok) throw new Error('HTTP error');
-    const alerts = await alertsRes.json();
+    const data = await alertsRes.json();
     const status = await statusRes.json();
-    render(alerts, status);
-    st.className = 'cyan';
-    st.textContent = alerts.is_scanning ? '\u30b9\u30ad\u30e3\u30f3\u4e2d...' : '\u76e3\u8996\u4e2d';
+    render(data, status);
   } catch (e) {
     console.error(e);
-    st.className = '';
-    st.style.color = 'var(--neon-red)';
-    st.textContent = '\u63a5\u7d9a\u30a8\u30e9\u30fc';
+    const ind = document.getElementById('statusIndicator');
+    ind.textContent = '\u25CF \u63A5\u7D9A\u30A8\u30E9\u30FC';
+    ind.className = 'status-indicator offline';
   }
-  countdown = REFRESH_MS / 1000;
 }
 
-/* ---------- render ---------- */
 function render(data, status) {
-  // stats
+  // Build price grid once
+  if (!watchlistBuilt && status.watchlist && status.watchlist.length) {
+    buildPriceGrid(status.watchlist);
+    watchlistBuilt = true;
+  }
+
+  // Status indicator
+  const ind = document.getElementById('statusIndicator');
+  if (data.is_scanning) {
+    ind.textContent = '\u25CF SCANNING...';
+    ind.className = 'status-indicator online';
+  } else if (data.scan_count > 0) {
+    ind.textContent = '\u25CF ONLINE';
+    ind.className = 'status-indicator online';
+  } else {
+    ind.textContent = '\u25CF OFFLINE';
+    ind.className = 'status-indicator offline';
+  }
+
+  // Progress
+  const progressText = document.getElementById('progressText');
+  const progressBar = document.getElementById('progressBar');
+  const progressPct = document.getElementById('progressPct');
+
+  if (data.is_scanning) {
+    progressText.textContent = '\u30B9\u30AD\u30E3\u30F3\u4E2D...';
+    // Animate a fake progress based on time
+    progressBar.style.width = '60%';
+    progressPct.textContent = '\u30B9\u30AD\u30E3\u30F3\u5B9F\u884C\u4E2D';
+  } else if (data.scan_count > 0) {
+    progressText.textContent = `\u30B9\u30AD\u30E3\u30F3 #${data.scan_count} \u5B8C\u4E86`;
+    progressBar.style.width = '100%';
+    progressPct.textContent = '100 %';
+  } else {
+    progressText.textContent = '\u5F85\u6A5F\u4E2D...';
+    progressBar.style.width = '0%';
+    progressPct.textContent = '0 %';
+  }
+
+  // Prices
+  if (data.tickers) {
+    updatePrices(data.tickers);
+  }
+
+  // Summary
   const s = data.summary;
-  document.getElementById('stTotal').textContent   = s.total_alerts;
-  document.getElementById('stWhale').textContent   = s.whale_count;
-  document.getElementById('stSpoof').textContent   = s.spoofing_count;
-  document.getElementById('stInsider').textContent = s.insider_count;
+  document.getElementById('sumWhale').textContent = s.whale_count;
+  document.getElementById('sumSpoof').textContent = s.spoofing_count;
+  document.getElementById('sumInsider').textContent = s.insider_count;
+  document.getElementById('sumTotal').textContent = s.total_alerts;
 
-  // header
-  document.getElementById('scanCount').textContent = data.scan_count;
-  if (data.last_scan_at) {
-    document.getElementById('lastUpdate').textContent =
-      new Date(data.last_scan_at).toLocaleTimeString('ja-JP');
+  // Prediction box (sentiment)
+  if (data.tickers) {
+    renderPredictions(data.tickers);
   }
 
-  // status bar
-  document.getElementById('statusText').textContent =
-    data.is_scanning ? '\u30b9\u30ad\u30e3\u30f3\u4e2d...' : '\u76e3\u8996\u4e2d';
-  document.getElementById('tickerCount').textContent = status.watchlist_count;
-  if (data.next_scan_at) {
-    document.getElementById('nextScan').textContent =
-      new Date(data.next_scan_at).toLocaleTimeString('ja-JP');
+  // Alert history box
+  if (data.tickers) {
+    renderAlertHistory(data.tickers, data.history);
   }
 
-  // collect alerts from tickers
-  const whales = [], spoofs = [], insiders = [];
-  for (const [, info] of Object.entries(data.tickers || {})) {
-    if (info.whale_alerts)    whales.push(...info.whale_alerts);
-    if (info.spoofing_alerts) spoofs.push(...info.spoofing_alerts);
-    if (info.insider_alerts)  insiders.push(...info.insider_alerts);
+  // Alert marquee
+  if (data.tickers) {
+    updateAlertMarquee(data.tickers);
   }
 
-  renderWhales(whales);
-  renderSpoofs(spoofs);
-  renderInsiders(insiders);
+  // Status bar
+  const lastScan = data.last_scan_at ? new Date(data.last_scan_at).toLocaleTimeString('ja-JP') : '--:--:--';
+  const nextScan = data.next_scan_at ? new Date(data.next_scan_at).toLocaleTimeString('ja-JP') : '--:--:--';
+  document.getElementById('statusBarLeft').textContent =
+    `Ready. | \u30B9\u30AD\u30E3\u30F3: ${data.scan_count}\u56DE | \u6700\u7D42: ${lastScan} | \u6B21\u56DE: ${nextScan}`;
+
+  prevScanCount = data.scan_count;
 }
 
-/* ---------- whale ---------- */
-function renderWhales(arr) {
-  const el = document.getElementById('listWhale');
-  document.getElementById('cntWhale').textContent = arr.length;
-  if (!arr.length) { el.innerHTML = '<div class="empty">\u5927\u53e3\u30a2\u30e9\u30fc\u30c8\u306a\u3057</div>'; return; }
-  el.innerHTML = arr.map(a => {
-    const c = a.option_type === 'CALL';
-    const dir = c ? '&#x1F4C8; \u4e0a\u6607\u30b7\u30b0\u30ca\u30eb' : '&#x1F4C9; \u4e0b\u843d\u30b7\u30b0\u30ca\u30eb';
-    const r = a.ratio === null || a.ratio === Infinity ? '\u221e\u500d(\u65b0\u898f)' : a.ratio + '\u500d';
-    return `<div class="item ${c ? 'w-call' : 'w-put'}">
-      <div class="row1">
-        <span class="tkr ${c ? 'call' : 'put'}">${a.ticker}</span>
-        <span class="badge ${c ? 'b-call' : 'b-put'}">${a.option_type}</span>
-        <span style="font-size:11px">${dir}</span>
-        <span class="meta">
-          <span>$${a.strike}</span>
-          <span>\u51fa\u6765\u9ad8:${a.volume.toLocaleString()}</span>
-          <span class="hi">\u901a\u5e38\u306e${r}</span>
-        </span>
-      </div>
-      <div class="sub">\u6e80\u671f: ${a.expiry} | \u5efa\u7389: ${a.open_interest.toLocaleString()}</div>
-      <div class="ts">${a.detected_at || ''}</div>
-    </div>`;
-  }).join('');
-}
+/* ============================================================
+   Timers
+   ============================================================ */
+// Clock: every second
+setInterval(updateClock, 1000);
+updateClock();
 
-/* ---------- spoofing ---------- */
-function renderSpoofs(arr) {
-  const el = document.getElementById('listSpoof');
-  document.getElementById('cntSpoof').textContent = arr.length;
-  if (!arr.length) { el.innerHTML = '<div class="empty">\u7570\u5e38\u677f\u30a2\u30e9\u30fc\u30c8\u306a\u3057</div>'; return; }
-  el.innerHTML = arr.map(a => {
-    const ask = a.wall_side === 'ASK';
-    const wallDir = ask ? '\u58f2\u308a\u58c1' : '\u8cb7\u3044\u58c1';
-    const dir = ask ? '&#x26A0; \u58f2\u308a\u58c1\u691c\u77e5' : '&#x26A0; \u8cb7\u3044\u58c1\u691c\u77e5';
-    const warn = ask
-      ? '\u4e0a\u5024\u3092\u62bc\u3055\u3048\u308b\u914d\u7f6e\u3002\u53cd\u843d\u306e\u53ef\u80fd\u6027\u306b\u6ce8\u610f'
-      : '\u4e0b\u5024\u3092\u652f\u3048\u308b\u914d\u7f6e\u3002\u58c1\u6d88\u5931\u6642\u306e\u4e0b\u629c\u3051\u306b\u6ce8\u610f';
-    return `<div class="item ${ask ? 'sp-ask' : 'sp-bid'}">
-      <div class="row1">
-        <span class="tkr sp">${a.ticker}</span>
-        <span class="badge ${ask ? 'b-ask' : 'b-bid'}">${wallDir}</span>
-        <span style="font-size:11px">${dir}</span>
-        <span class="meta">
-          <span>$${a.strike}</span>
-          <span>${a.wall_size.toLocaleString()}\u679a</span>
-          <span class="hi">\u677f\u539a\u6bd4${a.size_ratio}\u500d</span>
-        </span>
-      </div>
-      <div class="sub">${a.option_type} | \u6e80\u671f: ${a.expiry} | ${warn}</div>
-      <div class="ts">${a.detected_at || ''}</div>
-    </div>`;
-  }).join('');
-}
+// LIVE pulse: every 80ms (like desktop)
+setInterval(animateLivePulse, 80);
 
-/* ---------- insider ---------- */
-function renderInsiders(arr) {
-  const el = document.getElementById('listInsider');
-  document.getElementById('cntInsider').textContent = arr.length;
-  if (!arr.length) { el.innerHTML = '<div class="empty">\u30a4\u30f3\u30b5\u30a4\u30c0\u30fc\u8cfc\u5165\u306a\u3057</div>'; return; }
-  el.innerHTML = arr.map(a => `<div class="item ins">
-    <div class="row1">
-      <span class="tkr ins">${a.ticker}</span>
-      <span class="badge b-buy">\u8cfc\u5165</span>
-      <span style="font-size:11px">${a.insider_name}</span>
-      <span class="meta">
-        <span>${a.relationship}</span>
-        <span>${a.value}</span>
-      </span>
-    </div>
-    <div class="sub">${a.transaction} | ${a.date} | \u682a\u6570: ${a.shares}</div>
-    <div class="ts">${a.detected_at || ''}</div>
-  </div>`).join('');
-}
+// Spinner: every 200ms
+let isCurrentlyScanning = false;
+setInterval(() => animateSpinner(isCurrentlyScanning), 200);
 
-/* ---------- countdown ---------- */
-function startCountdown() {
-  if (cdTimer) clearInterval(cdTimer);
-  cdTimer = setInterval(() => {
-    countdown = Math.max(0, countdown - 1);
-    const m = Math.floor(countdown / 60);
-    const s = countdown % 60;
-    const txt = m + ':' + String(s).padStart(2, '0');
-    document.getElementById('refreshTimer').textContent = txt;
-    document.getElementById('footerTimer').textContent  = txt;
-  }, 1000);
-}
-
-/* ---------- init ---------- */
+// Polling: every 10 seconds
 load();
-startCountdown();
 setInterval(load, REFRESH_MS);
+
+// Track scanning state for spinner
+setInterval(async () => {
+  try {
+    const res = await fetch(API + '/api/status');
+    if (res.ok) {
+      const st = await res.json();
+      isCurrentlyScanning = st.is_scanning || false;
+    }
+  } catch (_) {}
+}, 3000);
 </script>
 </body>
 </html>
