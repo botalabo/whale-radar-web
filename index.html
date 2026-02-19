@@ -344,6 +344,14 @@
     text-align: center; font-size: 9px;
     color: var(--dim-text); padding: 2px 0;
   }
+  .countdown-big {
+    text-align: center; padding: 6px 0 2px;
+    font-size: 20px; font-weight: bold;
+    color: var(--neon-cyan);
+    text-shadow: 0 0 12px rgba(0,229,255,.3);
+    letter-spacing: 2px;
+    font-family: 'Consolas', monospace;
+  }
 
   /* Price header */
   .price-hdr {
@@ -820,6 +828,7 @@
     .progress-row { font-size: 9px; gap: 3px; }
     .pbar-wrap { height: 4px; }
     .pbar-pct { display: none; }
+    .countdown-big { font-size: 16px; padding: 4px 0 1px; }
 
     /* Price grid — 4 columns, enough height to see all tickers */
     .price-hdr { font-size: 8px; padding: 1px 0; }
@@ -1051,6 +1060,7 @@
       </div>
       <div class="pbar-wrap"><div class="pbar-fill" id="pbar"></div></div>
       <div class="pbar-pct" id="pbarPct">0 %</div>
+      <div class="countdown-big" id="countdownBig" style="display:none;"></div>
     </div>
 
     <!-- Price header -->
@@ -2315,10 +2325,12 @@ function render(data, status) {
     pt.textContent = '\u30B9\u30AD\u30E3\u30F3\u4E2D ' + prog;
     pb.style.width = pct + '%';
     pp.textContent = pct + ' %';
+    document.getElementById('countdownBig').style.display = 'none';
   } else if (data.is_scanning) {
     pt.textContent = '\u30B9\u30AD\u30E3\u30F3\u958B\u59CB...';
     pb.style.width = '5%';
     pp.textContent = '';
+    document.getElementById('countdownBig').style.display = 'none';
   } else if (data.scan_count > 0) {
     updateCountdown();  // カウントダウン表示
   } else {
@@ -2383,13 +2395,17 @@ function render(data, status) {
    Countdown — 次回スキャンまでのカウントダウン
    ============================================================ */
 function updateCountdown() {
-  if (isScanning || !nextScanTime) return;
+  const cdEl = document.getElementById('countdownBig');
+  if (isScanning || !nextScanTime) {
+    cdEl.style.display = 'none';
+    return;
+  }
   const now = new Date();
   const diff = Math.max(0, Math.floor((nextScanTime - now) / 1000));
 
   const min = Math.floor(diff / 60);
   const sec = diff % 60;
-  const countStr = min + ':' + String(sec).padStart(2, '0');
+  const countStr = String(min).padStart(2, '0') + ':' + String(sec).padStart(2, '0');
 
   /* Progress area */
   const pt = document.getElementById('progText');
@@ -2397,15 +2413,18 @@ function updateCountdown() {
   const pp = document.getElementById('pbarPct');
 
   if (diff > 0) {
-    pt.textContent = '\u6B21\u56DE\u30B9\u30AD\u30E3\u30F3\u307E\u3067 ' + countStr;
+    pt.textContent = 'NEXT SCAN';
     const elapsed = scanIntervalSec - diff;
     const pct = Math.min(100, Math.round((elapsed / scanIntervalSec) * 100));
     pb.style.width = pct + '%';
-    pp.textContent = pct + ' %';
+    pp.textContent = '';
+    cdEl.textContent = countStr;
+    cdEl.style.display = 'block';
   } else {
     pt.textContent = '\u30B9\u30AD\u30E3\u30F3\u6E96\u5099\u4E2D...';
     pb.style.width = '100%';
     pp.textContent = '';
+    cdEl.style.display = 'none';
   }
 
   /* Status bar も更新 */
