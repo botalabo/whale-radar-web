@@ -274,13 +274,21 @@
     padding: 4px 10px 2px;
   }
   .gear-btn {
-    font-size: 14px; cursor: pointer;
-    color: var(--dim-text);
-    background: none; border: none;
-    padding: 0 4px; transition: color .2s;
+    font-size: 11px; font-weight: bold;
+    cursor: pointer;
+    color: var(--neon-cyan);
+    background: rgba(0,229,255,.08);
+    border: 1px solid var(--neon-cyan);
+    border-radius: 4px;
+    padding: 2px 8px;
     font-family: 'Consolas', monospace;
+    transition: all .2s;
+    text-shadow: 0 0 6px rgba(0,229,255,.3);
   }
-  .gear-btn:hover { color: var(--neon-cyan); }
+  .gear-btn:hover {
+    background: rgba(0,229,255,.18);
+    box-shadow: 0 0 8px rgba(0,229,255,.25);
+  }
 
   /* ============================================ MAIN 2-COLUMN */
   .main-area {
@@ -1028,7 +1036,7 @@
     <!-- Price header -->
     <div class="price-hdr-wrap">
       <span class="price-hdr" id="priceHdr">── LIVE PRICES (0) ──</span>
-      <button class="gear-btn" onclick="openTickerConfig()" title="銘柄設定">&#x2699;</button>
+      <button class="gear-btn" onclick="openTickerConfig()">&#x2699; &#x9298;&#x67C4;&#x8A2D;&#x5B9A;</button>
     </div>
 
     <!-- Price grid -->
