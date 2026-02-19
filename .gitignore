@@ -4,3 +4,4 @@ __pycache__/
 .venv/
 venv/
 watchlist.json
+lifetime_uses.json
