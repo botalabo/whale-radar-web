@@ -200,7 +200,11 @@
   .price-cell:hover { background: rgba(0,229,255,.04); }
   .price-sym {
     font-size: 11px; font-weight: bold;
-    color: var(--neon-green); cursor: default;
+    color: var(--neon-green); cursor: pointer;
+    transition: text-shadow .2s;
+  }
+  .price-sym:hover {
+    text-shadow: 0 0 8px rgba(0,255,65,.5);
   }
   .price-val {
     font-size: 10px; text-align: right; white-space: nowrap;
@@ -334,6 +338,123 @@
   }
   .sb-left  { color: var(--dim-text); }
   .sb-right { color: #333344; }
+
+  /* ============================================ COPY BUTTONS */
+  .sec-header {
+    display: flex; align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0; padding-bottom: 4px;
+  }
+  .copy-btn {
+    font-family: 'Consolas', monospace;
+    font-size: 10px; font-weight: bold;
+    padding: 2px 10px;
+    border-radius: 4px;
+    cursor: pointer; border: 1px solid;
+    transition: background .2s;
+    white-space: nowrap;
+  }
+  .copy-btn.green {
+    color: var(--neon-green); background: #1A1A30;
+    border-color: var(--neon-green);
+  }
+  .copy-btn.green:hover { background: #002200; }
+  .copy-btn.cyan {
+    color: var(--neon-cyan); background: #1A1A30;
+    border-color: var(--neon-cyan);
+  }
+  .copy-btn.cyan:hover { background: #001A2A; }
+  .copy-btn.flash {
+    background: var(--neon-green) !important;
+    color: #000 !important;
+  }
+
+  /* ============================================ TICKER DETAIL MODAL */
+  .modal-overlay {
+    position: fixed; inset: 0; z-index: 8000;
+    background: rgba(10,10,15,.85);
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.3s ease;
+  }
+  .modal-overlay.show { opacity: 1; pointer-events: auto; }
+
+  .modal-box {
+    background: var(--panel-bg);
+    border: 2px solid var(--neon-cyan);
+    border-radius: 12px;
+    width: 620px; max-width: 95vw;
+    max-height: 85vh;
+    display: flex; flex-direction: column;
+    box-shadow: 0 0 40px rgba(0,229,255,.15);
+    overflow: hidden;
+  }
+
+  .modal-header {
+    display: flex; align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    border-bottom: 1px solid #2A2A3A;
+  }
+  .modal-header-left { display: flex; align-items: baseline; gap: 10px; }
+  .modal-ticker {
+    font-size: 22px; font-weight: bold; color: var(--neon-green);
+    text-shadow: 0 0 12px rgba(0,255,65,.4);
+  }
+  .modal-price { font-size: 14px; }
+  .modal-close {
+    font-size: 20px; color: var(--dim-text);
+    cursor: pointer; background: none; border: none;
+    font-family: 'Consolas', monospace;
+    padding: 4px 8px; border-radius: 4px;
+  }
+  .modal-close:hover { color: var(--neon-red); background: rgba(255,0,64,.1); }
+
+  .modal-summary {
+    display: flex; gap: 14px; flex-wrap: wrap;
+    padding: 10px 18px;
+    background: var(--card-bg);
+    border-bottom: 1px solid #2A2A3A;
+    font-size: 12px;
+  }
+  .modal-stat { white-space: nowrap; }
+
+  .modal-tabs {
+    display: flex; padding: 0 18px; gap: 4px;
+    padding-top: 10px;
+  }
+  .modal-tab {
+    font-family: 'Consolas', monospace;
+    font-size: 12px; font-weight: bold;
+    padding: 6px 16px; border-radius: 6px 6px 0 0;
+    cursor: pointer; border: 1px solid #2A2A3A;
+    border-bottom: none; transition: all .2s;
+  }
+  .modal-tab.active-alert {
+    background: var(--neon-green); color: var(--dark-bg);
+    border-color: var(--neon-green);
+  }
+  .modal-tab.inactive {
+    background: #1A1A30; color: var(--dim-text);
+    border-color: #2A2A3A;
+  }
+  .modal-tab.inactive:hover { color: var(--neon-cyan); }
+  .modal-tab.active-judge {
+    background: var(--neon-cyan); color: var(--dark-bg);
+    border-color: var(--neon-cyan);
+  }
+
+  .modal-content {
+    flex: 1; min-height: 0;
+    overflow-y: auto;
+    padding: 12px 18px 16px;
+    font-size: 13px; line-height: 1.6;
+  }
+  .modal-content::-webkit-scrollbar { width: 5px; }
+  .modal-content::-webkit-scrollbar-track { background: transparent; }
+  .modal-content::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+
+  .modal-content .ml { padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,.02); }
 
   /* ============================================ GATE OVERLAY */
   .gate-overlay {
@@ -555,13 +676,19 @@
 
     <!-- 予測・判定履歴 -->
     <div class="pred-section">
-      <div class="sec-title green">&ensp;&#x1F3AF;&ensp;クジラの予測・判定履歴 (PREDICTION RECORD)</div>
+      <div class="sec-header">
+        <div class="sec-title green">&ensp;&#x1F3AF;&ensp;クジラの予測・判定履歴 (PREDICTION RECORD)</div>
+        <button class="copy-btn green" id="copyPredBtn" onclick="copyPrediction()">&#x1F3AF; 実績コピー</button>
+      </div>
       <div class="logbox pred" id="predBox"></div>
     </div>
 
     <!-- WHALE ALERT 履歴 -->
     <div class="alert-section">
-      <div class="sec-title red">&ensp;&#x1F6A8;&ensp;WHALE ALERT 履歴</div>
+      <div class="sec-header">
+        <div class="sec-title red">&ensp;&#x1F6A8;&ensp;WHALE ALERT 履歴</div>
+        <button class="copy-btn cyan" id="copyAlertBtn" onclick="copyAlertHistory()">&#x1F4CB; 履歴コピー</button>
+      </div>
       <div class="logbox hist" id="alertBox"></div>
 
       <div class="disclaimer">
@@ -570,6 +697,25 @@
       </div>
     </div>
 
+  </div>
+</div>
+
+<!-- ======== TICKER DETAIL MODAL ======== -->
+<div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div class="modal-header-left">
+        <span class="modal-ticker" id="modalTicker">---</span>
+        <span class="modal-price" id="modalPrice"></span>
+      </div>
+      <button class="modal-close" onclick="closeModal()">&#x2715;</button>
+    </div>
+    <div class="modal-summary" id="modalSummary"></div>
+    <div class="modal-tabs">
+      <div class="modal-tab active-alert" id="tabAlert" onclick="switchTab('alerts')">&#x1F6A8; アラート履歴</div>
+      <div class="modal-tab inactive" id="tabJudge" onclick="switchTab('judge')">&#x1F3AF; 判定履歴</div>
+    </div>
+    <div class="modal-content" id="modalContent"></div>
   </div>
 </div>
 
@@ -610,6 +756,11 @@ const predictions = {};   // { ticker: { direction, price, time } }
 let lastScanCount = -1;
 let watchlistBuilt = false;
 let totalAlertCount = 0;
+
+/* ---------- Latest tickers data (for modal) ---------- */
+let latestTickers = {};
+let currentModalTab = 'alerts';
+let currentModalTicker = '';
 
 /* ============================================================
    Clock — デスクトップと同じ 🕐 YYYY-MM-DD HH:MM:SS 形式
@@ -697,7 +848,16 @@ function buildPrices(list) {
   for (const sym of list) {
     const c = document.createElement('div');
     c.className = 'price-cell';
-    c.innerHTML = '<span class="price-sym">' + sym + '</span><span class="price-val" id="P_' + sym + '">---</span>';
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'price-sym';
+    nameSpan.textContent = sym;
+    nameSpan.onclick = () => openTickerDetail(sym);
+    const valSpan = document.createElement('span');
+    valSpan.className = 'price-val';
+    valSpan.id = 'P_' + sym;
+    valSpan.textContent = '---';
+    c.appendChild(nameSpan);
+    c.appendChild(valSpan);
     g.appendChild(c);
   }
   document.getElementById('priceHdr').textContent = '\u2500\u2500 LIVE PRICES (' + list.length + ') \u2500\u2500';
@@ -962,6 +1122,208 @@ function updateMarquee(tickers) {
 }
 
 /* ============================================================
+   Ticker detail modal
+   ============================================================ */
+function openTickerDetail(sym) {
+  currentModalTicker = sym;
+  const info = latestTickers[sym];
+  if (!info) return;
+
+  // Header: ticker + price
+  document.getElementById('modalTicker').textContent = sym;
+  const mp = document.getElementById('modalPrice');
+  if (info.price) {
+    const ch = info.price.change;
+    const sign = ch >= 0 ? '+' : '';
+    const color = ch > 0 ? 'var(--price-up)' : ch < 0 ? 'var(--price-down)' : 'var(--price-flat)';
+    mp.innerHTML = '<span style="color:' + color + '">$' + info.price.price.toFixed(2) +
+      ' (' + sign + info.price.change_pct.toFixed(1) + '%)</span>';
+  } else {
+    mp.innerHTML = '<span style="color:var(--dim-text)">---</span>';
+  }
+
+  // Summary counts
+  const wa = info.whale_alerts || [];
+  const sa = info.spoofing_alerts || [];
+  const ia = info.insider_alerts || [];
+  const callCnt = wa.filter(a => a.option_type === 'CALL').length;
+  const putCnt = wa.filter(a => a.option_type === 'PUT').length;
+  const total = wa.length + sa.length + ia.length;
+
+  const sm = document.getElementById('modalSummary');
+  sm.innerHTML =
+    '<span class="modal-stat" style="color:var(--neon-cyan);font-weight:bold">\u{1F40B} \u30AF\u30B8\u30E9\u691C\u77E5: ' + total + '\u4EF6</span>' +
+    '<span class="modal-stat" style="color:' + (wa.length ? 'var(--neon-red)' : 'var(--dim-text)') + '">\u{1F6A8} \u30AA\u30D7\u30B7\u30E7\u30F3: ' + wa.length + '</span>' +
+    '<span class="modal-stat" style="color:' + (callCnt ? 'var(--price-up)' : 'var(--dim-text)') + '">CALL: ' + callCnt + '</span>' +
+    '<span class="modal-stat" style="color:' + (putCnt ? 'var(--price-down)' : 'var(--dim-text)') + '">PUT: ' + putCnt + '</span>' +
+    '<span class="modal-stat" style="color:' + (sa.length ? 'var(--neon-orange)' : 'var(--dim-text)') + '">\u26A0 \u7570\u5E38\u677F: ' + sa.length + '</span>' +
+    '<span class="modal-stat" style="color:' + (ia.length ? 'var(--neon-yellow)' : 'var(--dim-text)') + '">\u{1F575} \u30A4\u30F3\u30B5\u30A4\u30C0\u30FC: ' + ia.length + '</span>';
+
+  // Default tab
+  switchTab('alerts');
+  document.getElementById('modalOverlay').classList.add('show');
+}
+
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('show');
+}
+
+function switchTab(tab) {
+  currentModalTab = tab;
+  const tA = document.getElementById('tabAlert');
+  const tJ = document.getElementById('tabJudge');
+  if (tab === 'alerts') {
+    tA.className = 'modal-tab active-alert';
+    tJ.className = 'modal-tab inactive';
+    renderModalAlerts();
+  } else {
+    tA.className = 'modal-tab inactive';
+    tJ.className = 'modal-tab active-judge';
+    renderModalJudge();
+  }
+}
+
+function renderModalAlerts() {
+  const sym = currentModalTicker;
+  const info = latestTickers[sym];
+  const box = document.getElementById('modalContent');
+  if (!info) { box.innerHTML = '<div class="c-dim">\u30C7\u30FC\u30BF\u306A\u3057</div>'; return; }
+
+  const curPrice = info.price ? info.price.price : null;
+  let html = '';
+
+  if (info.whale_alerts) {
+    for (const a of info.whale_alerts) {
+      const text = a.text_jp || fmtWhale(a);
+      html += '<div class="ml b-red">' + esc(text) + '</div>';
+      const adv = adviceText(a);
+      if (adv) html += '<div class="ml c-cyan">  ' + esc(adv) + '</div>';
+    }
+  }
+  if (info.spoofing_alerts) {
+    for (const a of info.spoofing_alerts) {
+      const near = curPrice && curPrice > 0 && a.strike > 0 &&
+        Math.abs(a.strike - curPrice) / curPrice <= 0.03;
+      const text = a.text_jp || fmtSpoof(a, curPrice);
+      html += '<div class="ml ' + (near ? 'b-fire' : 'b-orange') + '">' + esc(text) + '</div>';
+      const adv = adviceText(a);
+      if (adv) html += '<div class="ml c-cyan">  ' + esc(adv) + '</div>';
+    }
+  }
+  if (info.insider_alerts) {
+    for (const a of info.insider_alerts) {
+      const text = a.text_jp || fmtInsider(a);
+      html += '<div class="ml b-yellow">' + esc(text) + '</div>';
+      const adv = adviceText(a);
+      if (adv) html += '<div class="ml c-cyan">  ' + esc(adv) + '</div>';
+    }
+  }
+
+  // Sentiment
+  if (info.sentiment_text) {
+    html += '<div class="ml" style="margin-top:8px;padding-top:6px;border-top:1px solid #2A2A3A"><span class="b-cyan">' + esc(info.sentiment_text) + '</span></div>';
+  }
+
+  if (!html) html = '<div class="c-dim">\u307E\u3060\u30A2\u30E9\u30FC\u30C8\u304C\u3042\u308A\u307E\u305B\u3093\u3002</div>';
+  box.innerHTML = html;
+}
+
+function renderModalJudge() {
+  const sym = currentModalTicker;
+  const pred = predictions[sym];
+  const info = latestTickers[sym];
+  const box = document.getElementById('modalContent');
+  let html = '';
+
+  if (pred && info && info.price) {
+    const curPrice = info.price.price;
+    const change = curPrice - pred.price;
+    const changeStr = change >= 0 ? '+$' + change.toFixed(2) : '-$' + Math.abs(change).toFixed(2);
+    const dirJP = pred.direction === 'up' ? '\u4E0A\u6607' : '\u4E0B\u843D';
+    const DRAW_TH = 0.05;
+
+    let cls, result;
+    if (Math.abs(change) <= DRAW_TH) {
+      cls = 'c-dim'; result = '\u{1F504} Draw (\u5F15\u304D\u5206\u3051)';
+    } else if ((pred.direction === 'up' && change > DRAW_TH) || (pred.direction === 'down' && change < -DRAW_TH)) {
+      cls = 'b-green'; result = '\u2705 Hit \u{1F680}';
+    } else {
+      cls = 'b-red'; result = '\u274C Miss';
+    }
+
+    html += '<div class="ml ' + cls + '">\u{1F4CA} \u3010\u5224\u5B9A\u3011 ' + sym + ' ' + dirJP +
+      '\u4E88\u6E2C \u27A1\uFE0F ' + result + '</div>';
+    html += '<div class="ml c-white">  \u682A\u4FA1: $' + pred.price.toFixed(2) +
+      ' \u27A1\uFE0F $' + curPrice.toFixed(2) + ' \u3010\u5909\u52D5: ' + changeStr + '\u3011</div>';
+    html += '<div class="ml c-dim">  \u4E88\u6E2C\u6642\u523B: ' + pred.time + '</div>';
+  }
+
+  // Current sentiment as new prediction
+  if (info && info.sentiment_text && info.whale_alerts && info.whale_alerts.length > 0) {
+    html += '<div class="ml" style="margin-top:8px;padding-top:6px;border-top:1px solid #2A2A3A">';
+    html += '<span class="b-cyan">\u{1F4CA} \u73FE\u5728\u306E\u30BB\u30F3\u30C1\u30E1\u30F3\u30C8:</span></div>';
+    html += '<div class="ml c-white">' + esc(info.sentiment_text) + '</div>';
+  }
+
+  if (!html) html = '<div class="c-dim">\u307E\u3060\u5224\u5B9A\u7D50\u679C\u304C\u3042\u308A\u307E\u305B\u3093\u3002</div>';
+  box.innerHTML = html;
+}
+
+// Escape key closes modal
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') closeModal();
+});
+
+/* ============================================================
+   Copy buttons
+   ============================================================ */
+function flashBtn(id, duration) {
+  const btn = document.getElementById(id);
+  btn.classList.add('flash');
+  setTimeout(() => btn.classList.remove('flash'), duration || 400);
+}
+
+function copyPrediction() {
+  const box = document.getElementById('predBox');
+  const text = box.innerText.trim();
+  if (!text || text === '\u23F3 \u30BB\u30F3\u30C1\u30E1\u30F3\u30C8\u89E3\u6790\u5F85\u6A5F\u4E2D...') {
+    showSbFeedback('\u5C65\u6B74\u304C\u7A7A\u3067\u3059');
+    return;
+  }
+  const today = new Date().toISOString().split('T')[0];
+  const clipboard = '\u{1F3AF}\u3010\u5224\u5B9A\u5C65\u6B74 \u5168\u4EF6\u30EC\u30DD\u30FC\u30C8\u3011 (' + today + ')\n\n' + text +
+    '\n\n\u203B\u6700\u65B0\u306E\u88CF\u89E3\u8AAC\u306Fnote\u3067\u516C\u958B\u4E2D\uFF01\nhttps://note.com/bota_labo_note/n/n12cd6b0d2eb2';
+  navigator.clipboard.writeText(clipboard).then(() => {
+    flashBtn('copyPredBtn');
+    showSbFeedback('\u2705 \u5B9F\u7E3E\u3092\u30AF\u30EA\u30C3\u30D7\u30DC\u30FC\u30C9\u306B\u30B3\u30D4\u30FC\u3057\u307E\u3057\u305F');
+  });
+}
+
+function copyAlertHistory() {
+  const box = document.getElementById('alertBox');
+  const text = box.innerText.trim();
+  if (!text || text === '\u23F3 \u30A2\u30E9\u30FC\u30C8\u5F85\u6A5F\u4E2D...') {
+    showSbFeedback('\u5C65\u6B74\u304C\u7A7A\u3067\u3059');
+    return;
+  }
+  const today = new Date().toISOString().split('T')[0];
+  const clipboard = '\u{1F4CA}\u3010\u672C\u65E5\u306E\u30AF\u30B8\u30E9\u691C\u77E5\u5C65\u6B74\u3011 (' + today + ')\n\n' + text +
+    '\n\n\u203B\u6700\u65B0\u306E\u88CF\u89E3\u8AAC\u306Fnote\u3067\u516C\u958B\u4E2D\uFF01\nhttps://note.com/bota_labo_note/n/n12cd6b0d2eb2';
+  navigator.clipboard.writeText(clipboard).then(() => {
+    flashBtn('copyAlertBtn');
+    showSbFeedback('\u2705 \u30A2\u30E9\u30FC\u30C8\u5C65\u6B74\u3092\u30AF\u30EA\u30C3\u30D7\u30DC\u30FC\u30C9\u306B\u30B3\u30D4\u30FC\u3057\u307E\u3057\u305F');
+  });
+}
+
+function showSbFeedback(msg) {
+  const el = document.getElementById('sbLeft');
+  const prev = el.textContent;
+  el.textContent = '  ' + msg;
+  el.style.color = 'var(--neon-green)';
+  setTimeout(() => { el.textContent = prev; el.style.color = ''; }, 3000);
+}
+
+/* ============================================================
    Gate — 1分プレビュー → パスワード必須
    ============================================================ */
 
@@ -1072,6 +1434,9 @@ function render(data, status) {
     buildPrices(status.watchlist);
     watchlistBuilt = true;
   }
+
+  /* Store tickers for modal access */
+  if (data.tickers) latestTickers = data.tickers;
 
   isScanning = data.is_scanning;
 
