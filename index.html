@@ -113,6 +113,29 @@
     white-space: nowrap;
   }
 
+  /* BGM toggle */
+  .bgm-btn {
+    font-family: 'Consolas', monospace;
+    font-size: 12px; font-weight: bold;
+    padding: 3px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    border: 1px solid;
+    transition: all .2s;
+    white-space: nowrap;
+    user-select: none;
+  }
+  .bgm-btn.on {
+    color: var(--neon-green); background: #002200;
+    border-color: var(--neon-green);
+    text-shadow: 0 0 6px rgba(0,255,65,.3);
+  }
+  .bgm-btn.off {
+    color: var(--dim-text); background: #1A1A25;
+    border-color: #333;
+  }
+  .bgm-btn:hover { opacity: .85; }
+
   /* ============================================ MAIN 2-COLUMN */
   .main-area {
     position: relative; z-index: 1;
@@ -598,6 +621,8 @@
     .live-label { font-size: 10px; margin-left: 4px; }
     .header-sub { display: none; }
     .header-clock { font-size: 10px; }
+    .bgm-btn { font-size: 9px; padding: 2px 6px; }
+    .header-right { gap: 5px; }
 
     /* Main — vertical stack */
     .main-area {
@@ -811,9 +836,15 @@
   <span class="live-label" id="liveLabel">&#x25CF; LIVE</span>
   <span class="header-sub">WEB EDITION</span>
   <div class="header-right">
+    <button class="bgm-btn off" id="bgmBtn" onclick="toggleBGM()">&#x1F507; BGM OFF</button>
     <span class="header-clock" id="clock">&#x1F550; ----/--/-- --:--:--</span>
   </div>
 </div>
+
+<!-- BGM Audio -->
+<audio id="bgmAudio" loop preload="auto">
+  <source src="/bgm.mp3" type="audio/mpeg">
+</audio>
 
 <!-- ======== MAIN AREA ======== -->
 <div class="main-area">
@@ -948,6 +979,54 @@ const YOYO_INTERVAL = 1000;
 const YOYO_PAUSE    = 4.0;
 const YOYO_SNAP     = 4.0;
 const yoyoState = {};
+
+/* ---------- BGM ---------- */
+const bgmAudio = document.getElementById('bgmAudio');
+let bgmPlaying = false;
+bgmAudio.volume = 0.3;
+
+function initBGM() {
+  // localStorage から設定を復元 (デバイスごとに保存)
+  const saved = localStorage.getItem('wr_bgm');
+  if (saved === 'on') {
+    // ユーザー操作が必要なのでクリック時に再生開始
+    bgmPlaying = true;
+    updateBGMBtn();
+    // autoplay制限回避: 最初のユーザー操作で再生を試みる
+    const tryPlay = () => {
+      if (bgmPlaying) {
+        bgmAudio.play().catch(() => {});
+      }
+      document.removeEventListener('click', tryPlay);
+      document.removeEventListener('touchstart', tryPlay);
+    };
+    document.addEventListener('click', tryPlay, { once: true });
+    document.addEventListener('touchstart', tryPlay, { once: true });
+  }
+}
+
+function toggleBGM() {
+  bgmPlaying = !bgmPlaying;
+  if (bgmPlaying) {
+    bgmAudio.play().catch(() => {});
+    localStorage.setItem('wr_bgm', 'on');
+  } else {
+    bgmAudio.pause();
+    localStorage.setItem('wr_bgm', 'off');
+  }
+  updateBGMBtn();
+}
+
+function updateBGMBtn() {
+  const btn = document.getElementById('bgmBtn');
+  if (bgmPlaying) {
+    btn.textContent = '\u{1F50A} BGM ON';
+    btn.className = 'bgm-btn on';
+  } else {
+    btn.textContent = '\u{1F507} BGM OFF';
+    btn.className = 'bgm-btn off';
+  }
+}
 
 /* ---------- Prediction tracking (client-side) ---------- */
 const predictions = {};   // { ticker: { direction, price, time } }
@@ -1776,8 +1855,9 @@ setInterval(() => tickSpinner(isScanning), 100);
 setInterval(() => { yoyoTick('predBox'); yoyoTick('alertBox'); }, YOYO_INTERVAL);
 
 /* ============================================================
-   Init — ゲート初期化 → データ取得開始
+   Init — BGM初期化 → ゲート初期化 → データ取得開始
    ============================================================ */
+initBGM();
 initGate();
 poll();
 setInterval(poll, POLL_MS);

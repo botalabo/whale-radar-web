@@ -385,12 +385,21 @@ app.add_middleware(
 # ============================================================
 
 INDEX_HTML = Path(__file__).parent / "index.html"
+BGM_FILE = Path(__file__).parent / "bgm.mp3"
 
 
 @app.get("/")
 async def serve_dashboard():
     """ダッシュボード HTML を配信 (認証不要 — ログイン画面を含む)。"""
     return FileResponse(INDEX_HTML, media_type="text/html")
+
+
+@app.get("/bgm.mp3")
+async def serve_bgm():
+    """BGM MP3 を配信する。"""
+    if BGM_FILE.exists():
+        return FileResponse(BGM_FILE, media_type="audio/mpeg")
+    return JSONResponse(status_code=404, content={"error": "not found"})
 
 
 @app.post("/api/login")
