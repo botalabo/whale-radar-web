@@ -1142,9 +1142,9 @@
 const API = window.location.origin;
 const POLL_MS = 8000;   // 8秒ポーリング
 
-/* ---------- Gate (1分プレビュー → パスワード) ---------- */
+/* ---------- Gate (10分プレビュー → パスワード) ---------- */
 let gateUnlocked = false;
-const GATE_DELAY_SEC = 60;  // 1分後にゲート表示
+const GATE_DELAY_SEC = 600;  // 10分後にゲート表示
 let gateTimer = null;
 
 /* ---------- Spinner (desktop と同じ Braille) ---------- */
