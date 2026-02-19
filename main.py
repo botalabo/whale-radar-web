@@ -1,23 +1,27 @@
 """
 ==========================================================
   Whale Radar Web — FastAPI Backend
-  GET /api/alerts   最新スキャン結果 (JSON)
-  GET /api/status   スキャン状態・次回実行時刻
-  GET /             index.html 配信
+  POST /api/login   パスワード認証 → トークン発行
+  GET  /api/alerts  最新スキャン結果 (JSON)
+  GET  /api/status  スキャン状態・次回実行時刻
+  GET  /            index.html 配信
 ==========================================================
 """
 
 import asyncio
 import datetime
+import hashlib
+import hmac
 import logging
 import os
+import secrets
 import time
 from collections import deque
 from contextlib import asynccontextmanager
 from pathlib import Path
 
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 
@@ -71,6 +75,34 @@ SLEEP_BETWEEN_REQUESTS = _env_float("SLEEP_BETWEEN_REQUESTS", 1.5)
 CORS_ORIGINS = [s.strip() for s in _env("CORS_ORIGINS", "*").split(",") if s.strip()]
 WEBHOOK_URL = _env("WEBHOOK_URL", "")
 PORT = _env_int("PORT", 8000)
+APP_PASSWORD = _env("APP_PASSWORD", "")
+
+# ============================================================
+# 認証トークン (サーバー起動ごとにシークレットを生成)
+# ============================================================
+_SERVER_SECRET = secrets.token_hex(32)
+
+
+def _make_token(password: str) -> str:
+    """パスワードからHMACトークンを生成する。"""
+    return hmac.new(
+        _SERVER_SECRET.encode(), password.encode(), hashlib.sha256
+    ).hexdigest()
+
+
+# 起動時に正しいトークンを計算 (APP_PASSWORD が空なら認証なし)
+_VALID_TOKEN = _make_token(APP_PASSWORD) if APP_PASSWORD else ""
+
+
+def _check_auth(request: Request) -> bool:
+    """リクエストの認証トークンを検証する。
+    APP_PASSWORD が空 → 常にTrue (認証なし)。"""
+    if not APP_PASSWORD:
+        return True
+    auth = request.headers.get("Authorization", "")
+    if auth.startswith("Bearer "):
+        return hmac.compare_digest(auth[7:], _VALID_TOKEN)
+    return False
 
 # ============================================================
 # ロガー
@@ -302,7 +334,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ORIGINS,
     allow_credentials=True,
-    allow_methods=["GET"],
+    allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
 
@@ -315,13 +347,39 @@ INDEX_HTML = Path(__file__).parent / "index.html"
 
 @app.get("/")
 async def serve_dashboard():
-    """ダッシュボード HTML を配信。"""
+    """ダッシュボード HTML を配信 (認証不要 — ログイン画面を含む)。"""
     return FileResponse(INDEX_HTML, media_type="text/html")
 
 
+@app.get("/api/auth-required")
+async def auth_required():
+    """パスワード認証が必要かどうかを返す。"""
+    return JSONResponse(content={"required": bool(APP_PASSWORD)})
+
+
+@app.post("/api/login")
+async def login(request: Request):
+    """パスワードを検証してトークンを返す。"""
+    try:
+        body = await request.json()
+        password = body.get("password", "")
+    except Exception:
+        return JSONResponse(status_code=400, content={"ok": False, "error": "invalid request"})
+
+    if not APP_PASSWORD:
+        return JSONResponse(content={"ok": True, "token": ""})
+
+    if hmac.compare_digest(password, APP_PASSWORD):
+        return JSONResponse(content={"ok": True, "token": _VALID_TOKEN})
+
+    return JSONResponse(status_code=401, content={"ok": False, "error": "パスワードが違います"})
+
+
 @app.get("/api/alerts")
-async def get_alerts():
+async def get_alerts(request: Request):
     """最新のスキャン結果をJSON返却。"""
+    if not _check_auth(request):
+        return JSONResponse(status_code=401, content={"error": "unauthorized"})
     return JSONResponse(content={
         "scan_count": scan_state["scan_count"],
         "last_scan_at": scan_state["last_scan_at"],
@@ -334,8 +392,10 @@ async def get_alerts():
 
 
 @app.get("/api/status")
-async def get_status():
+async def get_status(request: Request):
     """スキャン状態・次回実行時刻・銘柄数を返す。"""
+    if not _check_auth(request):
+        return JSONResponse(status_code=401, content={"error": "unauthorized"})
     return JSONResponse(content={
         "scan_count": scan_state["scan_count"],
         "is_scanning": scan_state["is_scanning"],
