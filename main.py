@@ -165,28 +165,30 @@ _VALID_TOKEN = _make_token(APP_PASSWORD) if APP_PASSWORD else ""
 _LIFETIME_TOKEN = _make_token(LIFETIME_PASSWORD) if LIFETIME_PASSWORD else ""
 
 # ============================================================
-# 買い切りパスワード使用回数管理 (IPベース)
+# 買い切りパスワード使用回数管理 (入力回数ベース)
 # ============================================================
 _LIFETIME_FILE = Path(__file__).parent / "lifetime_uses.json"
 
 
-def _load_lifetime_ips() -> list[str]:
-    """使用済みIPリストを読み込む。"""
+def _load_lifetime_count() -> int:
+    """使用回数を読み込む。"""
     if _LIFETIME_FILE.exists():
         try:
             data = json.loads(_LIFETIME_FILE.read_text(encoding="utf-8"))
-            if isinstance(data, list):
-                return data
+            if isinstance(data, dict):
+                return data.get("count", 0)
         except Exception:
             pass
-    return []
+    return 0
 
 
-def _save_lifetime_ips(ips: list[str]) -> None:
-    _LIFETIME_FILE.write_text(json.dumps(ips, ensure_ascii=False), encoding="utf-8")
+def _save_lifetime_count(count: int) -> None:
+    _LIFETIME_FILE.write_text(
+        json.dumps({"count": count}, ensure_ascii=False), encoding="utf-8"
+    )
 
 
-_lifetime_used_ips: list[str] = _load_lifetime_ips()
+_lifetime_use_count: int = _load_lifetime_count()
 
 
 def _check_auth(request: Request) -> bool:
@@ -468,7 +470,7 @@ async def serve_bgm():
 async def login(request: Request):
     """パスワードを検証してトークンを返す。
     通常パスワード → 無制限
-    買い切りパスワード → IP 2回まで"""
+    買い切りパスワード → 入力回数制限 (LIFETIME_MAX_USES)"""
     try:
         body = await request.json()
         password = body.get("password", "")
@@ -482,27 +484,23 @@ async def login(request: Request):
     if hmac.compare_digest(password, APP_PASSWORD):
         return JSONResponse(content={"ok": True, "token": _VALID_TOKEN})
 
-    # 買い切りパスワード
+    # 買い切りパスワード (入力回数ベース)
     if LIFETIME_PASSWORD and hmac.compare_digest(password, LIFETIME_PASSWORD):
-        ip = _get_client_ip(request)
-
-        # 既に登録済みIPなら通す
-        if ip in _lifetime_used_ips:
-            return JSONResponse(content={"ok": True, "token": _LIFETIME_TOKEN})
+        global _lifetime_use_count
 
         # 上限チェック
-        if len(_lifetime_used_ips) >= LIFETIME_MAX_USES:
-            logger.warning(f"買い切りパスワード上限超過: IP={ip} (使用済み: {_lifetime_used_ips})")
+        if _lifetime_use_count >= LIFETIME_MAX_USES:
+            logger.warning(f"買い切りパスワード上限超過 (使用済み: {_lifetime_use_count}/{LIFETIME_MAX_USES})")
             return JSONResponse(status_code=401, content={
                 "ok": False,
                 "error": "このパスワードは使用回数の上限に達しました"
             })
 
-        # 新規IP登録
-        _lifetime_used_ips.append(ip)
-        _save_lifetime_ips(_lifetime_used_ips)
-        logger.info(f"買い切りパスワード使用: IP={ip} ({len(_lifetime_used_ips)}/{LIFETIME_MAX_USES})")
-        return JSONResponse(content={"ok": True, "token": _LIFETIME_TOKEN})
+        # カウント加算 & 保存
+        _lifetime_use_count += 1
+        _save_lifetime_count(_lifetime_use_count)
+        logger.info(f"買い切りパスワード使用: {_lifetime_use_count}/{LIFETIME_MAX_USES}")
+        return JSONResponse(content={"ok": True, "token": _LIFETIME_TOKEN, "lifetime": True})
 
     return JSONResponse(status_code=401, content={"ok": False, "error": "パスワードが違います"})
 

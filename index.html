@@ -1948,8 +1948,10 @@ function refreshExpand() {
    ============================================================ */
 
 async function initGate() {
-  // sessionStorage にトークンがあれば検証
-  const saved = sessionStorage.getItem('wr_token');
+  // localStorage → sessionStorage の順でトークンを検証
+  const savedLocal = localStorage.getItem('wr_token');
+  const savedSession = sessionStorage.getItem('wr_token');
+  const saved = savedLocal || savedSession;
   if (saved) {
     try {
       const res = await fetch(API + '/api/verify', {
@@ -1963,6 +1965,7 @@ async function initGate() {
         return;  // 認証済み → ゲート不要
       }
     } catch (_) {}
+    localStorage.removeItem('wr_token');
     sessionStorage.removeItem('wr_token');
   }
 
@@ -2016,7 +2019,12 @@ async function doGateLogin() {
     const data = await res.json();
     if (data.ok) {
       gateUnlocked = true;
-      sessionStorage.setItem('wr_token', data.token);
+      if (data.lifetime) {
+        // 買い切り → localStorage に永続保存 (再ログイン不要)
+        localStorage.setItem('wr_token', data.token);
+      } else {
+        sessionStorage.setItem('wr_token', data.token);
+      }
       document.getElementById('gateOverlay').classList.remove('show');
       if (gateTimer) clearInterval(gateTimer);
     } else {
