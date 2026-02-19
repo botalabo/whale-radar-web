@@ -1150,9 +1150,9 @@
 const API = window.location.origin;
 const POLL_MS = 8000;   // 8秒ポーリング
 
-/* ---------- Gate (10分プレビュー → パスワード) ---------- */
+/* ---------- Gate (5分プレビュー → パスワード / 毎日リセット) ---------- */
 let gateUnlocked = false;
-const GATE_DELAY_SEC = 600;  // 10分後にゲート表示
+const GATE_DELAY_SEC = 300;  // 5分後にゲート表示
 let gateTimer = null;
 
 /* ---------- Spinner (desktop と同じ Braille) ---------- */
@@ -1967,16 +1967,25 @@ async function initGate() {
     sessionStorage.removeItem('wr_token');
   }
 
-  // localStorage に初回アクセス時刻を記録 (リロードしてもリセットされない)
+  // 日付が変わったらタイマーリセット (毎日5分無料)
+  const today = new Date().toDateString();
+  const savedDate = localStorage.getItem('wr_gate_date') || '';
   let gateStart = parseInt(localStorage.getItem('wr_gate_start') || '0', 10);
-  if (!gateStart) {
+
+  if (savedDate !== today) {
+    // 新しい日 → リセット
     gateStart = Date.now();
     localStorage.setItem('wr_gate_start', String(gateStart));
+    localStorage.setItem('wr_gate_date', today);
+  } else if (!gateStart) {
+    gateStart = Date.now();
+    localStorage.setItem('wr_gate_start', String(gateStart));
+    localStorage.setItem('wr_gate_date', today);
   }
 
   const elapsed = Math.floor((Date.now() - gateStart) / 1000);
   if (elapsed >= GATE_DELAY_SEC) {
-    // 既に1分経過 → 即ロック
+    // 5分経過 → 即ロック
     showGate();
   } else {
     // 残り時間からカウントダウン
