@@ -585,106 +585,121 @@
       -webkit-overflow-scrolling: touch;
     }
 
-    /* Marquee — compact */
-    .marquee-row { height: 28px; }
-    .marquee-track { font-size: 11px; }
+    /* Marquee — single row, compact */
+    .marquee-row { height: 24px; }
+    .marquee-track { font-size: 10px; }
 
-    /* Header — compact */
+    /* Header — 1 line compact */
     .header {
-      height: 50px; min-height: 50px;
-      padding: 0 10px;
+      height: 40px; min-height: 40px;
+      padding: 0 8px;
     }
-    .header-title { font-size: 13px; letter-spacing: 1px; }
-    .live-label { font-size: 11px; margin-left: 6px; }
+    .header-title { font-size: 11px; letter-spacing: 0.5px; }
+    .live-label { font-size: 10px; margin-left: 4px; }
     .header-sub { display: none; }
-    .header-clock { font-size: 11px; }
+    .header-clock { font-size: 10px; }
 
-    /* Main — vertical stack, allow scroll */
+    /* Main — vertical stack */
     .main-area {
       flex-direction: column;
-      padding: 4px 5px; gap: 5px;
+      padding: 3px 4px; gap: 3px;
       flex: none;
       overflow: visible;
     }
 
-    /* Left panel — compact, no fixed height */
+    /* ---- LEFT PANEL — ultra compact ---- */
     .left-panel {
       width: 100%; min-width: 100%;
       flex-shrink: 0;
       max-height: none;
     }
-    .status-ind { font-size: 10px; padding: 5px 0 3px; }
-    .progress-box { margin: 0 6px 3px; padding: 3px 6px; }
-    .progress-row { font-size: 10px; }
-    .pbar-wrap { height: 7px; }
-    .pbar-pct { font-size: 8px; }
-    .price-hdr { font-size: 9px; padding: 2px 0; }
+
+    /* Status + Progress merged into 1 line */
+    .status-ind { font-size: 9px; padding: 3px 0 1px; }
+    .progress-box { margin: 0 4px 2px; padding: 2px 6px; }
+    .progress-row { font-size: 9px; gap: 3px; }
+    .pbar-wrap { height: 4px; }
+    .pbar-pct { display: none; }
+
+    /* Price grid — 4 columns, enough height to see all tickers */
+    .price-hdr { font-size: 8px; padding: 1px 0; }
     .price-grid-wrap {
       flex: none;
-      max-height: 140px;
-      margin: 0 6px;
+      max-height: 180px;
+      margin: 0 4px;
       padding: 2px;
     }
-    .price-grid { grid-template-columns: 1fr 1fr 1fr; gap: 0; }
-    .price-cell { padding: 2px 4px; }
+    .price-grid { grid-template-columns: 1fr 1fr 1fr 1fr; gap: 0; }
+    .price-cell { padding: 2px 3px; }
     .price-sym { font-size: 10px; }
-    .price-val { font-size: 9px; }
-    .action-box { margin: 3px 6px 4px; padding: 4px 6px; }
-    .action-hdr { font-size: 8px; }
-    .sum-row { font-size: 9px; }
-    .scan-info { font-size: 8px; margin: 1px 6px 4px; }
+    .price-val { font-size: 8px; }
 
-    /* Right panel — stack sections */
+    /* Summary — horizontal single line */
+    .action-box { margin: 2px 4px 2px; padding: 3px 6px; }
+    .action-hdr { display: none; }
+    .sum-row { font-size: 8px; padding: 0; }
+    .scan-info { display: none; }
+
+    /* ---- RIGHT PANEL ---- */
     .right-panel {
       flex: none;
       min-height: 0;
       overflow: visible;
     }
 
-    /* Sections — fixed heights for mobile scroll */
-    .pred-section { padding: 5px 5px 3px; flex: none; }
-    .alert-section { padding: 3px 5px 5px; flex: none; }
+    .pred-section { padding: 4px 4px 2px; flex: none; }
+    .alert-section { padding: 2px 4px 4px; flex: none; }
 
-    .sec-title { font-size: 11px; }
+    /* Section title — tappable feel */
+    .sec-title { font-size: 10px; }
     .sec-header { padding-bottom: 2px; }
 
-    /* Logbox — scrollable with fixed height */
+    /* Logbox — taller on mobile (40vh each), tappable */
     .logbox {
       flex: none;
-      height: 200px;
-      min-height: 100px;
+      height: 40vh;
+      min-height: 160px;
       font-size: 11px;
       line-height: 1.45;
       padding: 4px 5px;
+      cursor: pointer;
+      position: relative;
+    }
+    .logbox::after {
+      content: '\u25B2 \u30BF\u30C3\u30D7\u3067\u5168\u753B\u9762\u8868\u793A';
+      position: absolute;
+      bottom: 4px; right: 6px;
+      font-size: 8px;
+      color: rgba(255,255,255,.25);
+      pointer-events: none;
     }
 
-    /* Bold variants — smaller on mobile */
     .b-red, .b-green, .b-cyan, .b-yellow, .b-orange, .b-fire {
       font-size: 12px;
     }
     .ll .ts { font-size: 10px; }
 
-    /* Copy buttons */
-    .copy-btn { font-size: 9px; padding: 2px 6px; }
+    /* Copy button */
+    .copy-btn { font-size: 8px; padding: 2px 5px; }
 
-    /* Disclaimer */
-    .disclaimer { font-size: 9px; padding: 3px 5px; margin-top: 3px; }
+    /* Disclaimer — hide on mobile to save space */
+    .disclaimer { display: none; }
 
     /* Status bar */
     .status-bar {
-      height: 26px; min-height: 26px;
-      font-size: 9px; padding: 0 6px;
+      height: 24px; min-height: 24px;
+      font-size: 8px; padding: 0 6px;
     }
     .sb-right { display: none; }
 
-    /* Gate overlay — mobile friendly */
-    .gate-box { padding: 24px 20px; }
-    .gate-box .logo { font-size: 40px; }
-    .gate-box h2 { font-size: 16px; letter-spacing: 1px; }
-    .gate-box .edition { font-size: 10px; margin-bottom: 14px; }
-    .gate-promo { padding: 10px 12px; }
-    .gate-promo .promo-title { font-size: 12px; }
-    .gate-promo .promo-body { font-size: 11px; }
+    /* Gate overlay */
+    .gate-box { padding: 20px 16px; }
+    .gate-box .logo { font-size: 36px; margin-bottom: 4px; }
+    .gate-box h2 { font-size: 15px; letter-spacing: 1px; }
+    .gate-box .edition { font-size: 9px; margin-bottom: 12px; }
+    .gate-promo { padding: 8px 10px; margin-bottom: 14px; }
+    .gate-promo .promo-title { font-size: 11px; }
+    .gate-promo .promo-body { font-size: 10px; }
     .gate-box input { font-size: 13px; padding: 10px 12px; }
     .gate-box button { font-size: 13px; padding: 10px; }
 
@@ -699,11 +714,56 @@
     .modal-header { padding: 10px 12px; }
     .modal-ticker { font-size: 18px; }
     .modal-price { font-size: 12px; }
-    .modal-summary { padding: 8px 12px; font-size: 11px; gap: 8px; }
-    .modal-tabs { padding: 8px 12px 0; }
-    .modal-tab { font-size: 11px; padding: 5px 12px; }
+    .modal-summary { padding: 6px 12px; font-size: 10px; gap: 6px; }
+    .modal-tabs { padding: 6px 12px 0; }
+    .modal-tab { font-size: 10px; padding: 5px 10px; }
     .modal-content { padding: 8px 12px 12px; font-size: 11px; line-height: 1.5; }
   }
+
+  /* ============================================ LOGBOX EXPAND OVERLAY (mobile tap) */
+  .expand-overlay {
+    position: fixed; inset: 0; z-index: 7000;
+    background: rgba(10,10,15,.96);
+    display: flex; flex-direction: column;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.25s ease;
+  }
+  .expand-overlay.show { opacity: 1; pointer-events: auto; }
+
+  .expand-header {
+    display: flex; align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: var(--panel-bg);
+    border-bottom: 1px solid #2A2A3A;
+    flex-shrink: 0;
+  }
+  .expand-title {
+    font-size: 13px; font-weight: bold;
+  }
+  .expand-title.green { color: var(--neon-green); }
+  .expand-title.red   { color: var(--neon-red); }
+  .expand-close {
+    font-size: 14px; color: var(--dim-text);
+    cursor: pointer; background: none; border: none;
+    font-family: 'Consolas', monospace;
+    padding: 4px 10px; border-radius: 4px;
+  }
+  .expand-close:hover { color: var(--neon-red); }
+
+  .expand-body {
+    flex: 1; min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 8px 10px;
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 13px;
+    line-height: 1.55;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+  }
+  .expand-body.pred { background: #080D06; color: var(--white-text); }
+  .expand-body.hist { background: #0D0006; color: var(--white-text); }
 </style>
 </head>
 <body>
@@ -809,7 +869,7 @@
         <div class="sec-title green">&ensp;&#x1F3AF;&ensp;クジラの予測・判定履歴 (PREDICTION RECORD)</div>
         <button class="copy-btn green" id="copyPredBtn" onclick="copyPrediction()">&#x1F3AF; 実績コピー</button>
       </div>
-      <div class="logbox pred" id="predBox"></div>
+      <div class="logbox pred" id="predBox" onclick="openExpand('pred')"></div>
     </div>
 
     <!-- WHALE ALERT 履歴 -->
@@ -818,7 +878,7 @@
         <div class="sec-title red">&ensp;&#x1F6A8;&ensp;WHALE ALERT 履歴</div>
         <button class="copy-btn cyan" id="copyAlertBtn" onclick="copyAlertHistory()">&#x1F4CB; 履歴コピー</button>
       </div>
-      <div class="logbox hist" id="alertBox"></div>
+      <div class="logbox hist" id="alertBox" onclick="openExpand('alert')"></div>
 
       <div class="disclaimer">
         &#x26A0;&#xFE0F; 異常板：必ずしもフェイクとは限りません。大口の実需が含まれる可能性もあり、板の厚みの変化を示す指標です。<br>
@@ -846,6 +906,15 @@
     </div>
     <div class="modal-content" id="modalContent"></div>
   </div>
+</div>
+
+<!-- ======== EXPAND OVERLAY (mobile tap-to-expand) ======== -->
+<div class="expand-overlay" id="expandOverlay">
+  <div class="expand-header">
+    <span class="expand-title" id="expandTitle"></span>
+    <button class="expand-close" onclick="closeExpand()">&#x2715; &#x9589;&#x3058;&#x308B;</button>
+  </div>
+  <div class="expand-body" id="expandBody"></div>
 </div>
 
 <!-- ======== STATUS BAR ======== -->
@@ -1462,6 +1531,48 @@ function showSbFeedback(msg) {
 }
 
 /* ============================================================
+   Expand overlay — tap logbox to expand (mobile)
+   ============================================================ */
+let expandedTarget = null;
+
+function isMobile() { return window.innerWidth <= 600; }
+
+function openExpand(which) {
+  if (!isMobile()) return;
+  const overlay = document.getElementById('expandOverlay');
+  const title = document.getElementById('expandTitle');
+  const body = document.getElementById('expandBody');
+
+  if (which === 'pred') {
+    title.textContent = '\u{1F3AF} \u30AF\u30B8\u30E9\u306E\u4E88\u6E2C\u30FB\u5224\u5B9A\u5C65\u6B74';
+    title.className = 'expand-title green';
+    body.className = 'expand-body pred';
+    body.innerHTML = document.getElementById('predBox').innerHTML;
+  } else {
+    title.textContent = '\u{1F6A8} WHALE ALERT \u5C65\u6B74';
+    title.className = 'expand-title red';
+    body.className = 'expand-body hist';
+    body.innerHTML = document.getElementById('alertBox').innerHTML;
+  }
+  expandedTarget = which;
+  overlay.classList.add('show');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeExpand() {
+  document.getElementById('expandOverlay').classList.remove('show');
+  expandedTarget = null;
+  document.body.style.overflow = '';
+}
+
+function refreshExpand() {
+  if (!expandedTarget) return;
+  const body = document.getElementById('expandBody');
+  const src = expandedTarget === 'pred' ? 'predBox' : 'alertBox';
+  body.innerHTML = document.getElementById(src).innerHTML;
+}
+
+/* ============================================================
    Gate — 1分プレビュー → パスワード必須
    ============================================================ */
 
@@ -1635,6 +1746,9 @@ function render(data, status) {
 
   /* Alert history box */
   if (data.tickers) renderAlertBox(data.tickers);
+
+  /* Refresh expand overlay if open */
+  refreshExpand();
 
   /* Alert marquee */
   if (data.tickers) updateMarquee(data.tickers);
