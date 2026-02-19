@@ -1960,36 +1960,24 @@ async function initGate() {
       const data = await res.json();
       if (data.valid) {
         gateUnlocked = true;
-        localStorage.removeItem('wr_gate_start');
         return;  // 認証済み → ゲート不要
       }
     } catch (_) {}
     sessionStorage.removeItem('wr_token');
   }
 
-  // 日付が変わったらタイマーリセット (毎日5分無料)
-  const today = new Date().toDateString();
-  const savedDate = localStorage.getItem('wr_gate_date') || '';
-  let gateStart = parseInt(localStorage.getItem('wr_gate_start') || '0', 10);
-
-  if (savedDate !== today) {
-    // 新しい日 → リセット
-    gateStart = Date.now();
-    localStorage.setItem('wr_gate_start', String(gateStart));
-    localStorage.setItem('wr_gate_date', today);
-  } else if (!gateStart) {
-    gateStart = Date.now();
-    localStorage.setItem('wr_gate_start', String(gateStart));
-    localStorage.setItem('wr_gate_date', today);
-  }
-
-  const elapsed = Math.floor((Date.now() - gateStart) / 1000);
-  if (elapsed >= GATE_DELAY_SEC) {
-    // 5分経過 → 即ロック
-    showGate();
-  } else {
-    // 残り時間からカウントダウン
-    startGateCountdown(GATE_DELAY_SEC - elapsed);
+  // サーバーにIPベースのゲート状態を問い合わせ
+  try {
+    const res = await fetch(API + '/api/gate');
+    const gate = await res.json();
+    if (gate.locked) {
+      showGate();
+    } else {
+      startGateCountdown(gate.remaining);
+    }
+  } catch (_) {
+    // サーバーエラー時はフォールバック: 5分カウントダウン
+    startGateCountdown(GATE_DELAY_SEC);
   }
 }
 
@@ -2029,7 +2017,6 @@ async function doGateLogin() {
     if (data.ok) {
       gateUnlocked = true;
       sessionStorage.setItem('wr_token', data.token);
-      localStorage.removeItem('wr_gate_start');
       document.getElementById('gateOverlay').classList.remove('show');
       if (gateTimer) clearInterval(gateTimer);
     } else {

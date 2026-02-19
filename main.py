@@ -197,6 +197,11 @@ scan_state: dict = {
 # 直近50件のアラート履歴
 alert_history: deque[dict] = deque(maxlen=MAX_HISTORY)
 
+# ゲートタイマー (IPアドレス → 初回アクセス日時)
+# { "1.2.3.4": {"start": timestamp, "date": "2026-02-19"} }
+GATE_PREVIEW_SEC = 300  # 5分
+_gate_tracker: dict[str, dict] = {}
+
 # 最新スキャンの銘柄別データ
 latest_tickers: dict = {}
 
@@ -457,6 +462,41 @@ async def verify_token(request: Request):
     except Exception:
         return JSONResponse(content={"valid": False})
     return JSONResponse(content={"valid": hmac.compare_digest(token, _VALID_TOKEN)})
+
+
+def _get_client_ip(request: Request) -> str:
+    """プロキシ対応でクライアントIPを取得する。"""
+    forwarded = request.headers.get("X-Forwarded-For", "")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
+@app.get("/api/gate")
+async def gate_status(request: Request):
+    """IPアドレスベースでゲート状態を返す。
+    - locked=false: プレビュー中 (remaining=残り秒数)
+    - locked=true:  5分経過、ロック済み
+    日付が変わればリセットされる。"""
+    ip = _get_client_ip(request)
+    today = datetime.date.today().isoformat()
+    now = time.time()
+
+    entry = _gate_tracker.get(ip)
+
+    # 日付が変わった or 初回 → リセット
+    if not entry or entry.get("date") != today:
+        entry = {"start": now, "date": today}
+        _gate_tracker[ip] = entry
+
+    elapsed = int(now - entry["start"])
+    remaining = max(0, GATE_PREVIEW_SEC - elapsed)
+
+    return JSONResponse(content={
+        "locked": remaining <= 0,
+        "remaining": remaining,
+        "preview_sec": GATE_PREVIEW_SEC,
+    })
 
 
 @app.get("/api/alerts")
