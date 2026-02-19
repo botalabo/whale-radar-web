@@ -96,7 +96,7 @@ def check_options_volume(ticker_symbol: str, threshold: float) -> list[dict]:
                             "strike": row["strike"],
                             "volume": int(vol),
                             "open_interest": int(oi),
-                            "ratio": round(vol / oi, 1) if oi > 0 else float("inf"),
+                            "ratio": round(vol / oi, 1) if oi > 0 else 999.9,
                         })
     except Exception:
         pass
@@ -305,7 +305,7 @@ def get_sentiment_direction(
 # ============================================================
 
 def _get_direction_label(option_type: str, ratio: float) -> str:
-    is_extreme = (ratio >= 10) or (ratio == float("inf"))
+    is_extreme = (ratio >= 10) or (ratio == 999.9)
     if option_type == "CALL":
         return "\U0001f4c8 強い上方シグナル(CALL)" if is_extreme else "\U0001f4c8 上方シグナル(CALL)"
     else:
@@ -317,7 +317,7 @@ def format_whale_alert_history_jp(alert: dict) -> str:
     direction = _get_direction_label(alert["option_type"], alert["ratio"])
     ratio_str = (
         f'通常の{alert["ratio"]}倍'
-        if alert["ratio"] != float("inf")
+        if alert["ratio"] != 999.9
         else "通常の∞倍"
     )
     return (

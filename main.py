@@ -226,9 +226,11 @@ def run_full_scan() -> None:
 
     elapsed = round(time.time() - scan_start, 1)
 
-    # グローバルステート更新
-    latest_tickers.clear()
+    # グローバルステート更新 (アトミックに差し替え — 途中状態をAPIに見せない)
     latest_tickers.update(tickers_data)
+    for k in list(latest_tickers):
+        if k not in tickers_data:
+            latest_tickers.pop(k, None)
     latest_summary["total_alerts"] = len(cycle_whale) + len(cycle_spoofing) + len(cycle_insider)
     latest_summary["whale_count"] = len(cycle_whale)
     latest_summary["spoofing_count"] = len(cycle_spoofing)
@@ -246,27 +248,37 @@ def run_full_scan() -> None:
 # ============================================================
 
 async def scan_loop() -> None:
-    """定期的にスキャンを実行するバックグラウンドタスク。"""
+    """定期的にスキャンを実行するバックグラウンドタスク。
+    どんな例外が発生しても自動復旧して監視を継続する。"""
     await asyncio.sleep(2)
 
     while True:
-        scan_state["is_scanning"] = True
-        scan_state["scan_count"] += 1
-        num = scan_state["scan_count"]
-        logger.info(f"━━━━ SCAN #{num} 開始 ({len(WATCHLIST)}銘柄) ━━━━")
-
         try:
-            await asyncio.to_thread(run_full_scan)
-            scan_state["last_scan_at"] = datetime.datetime.now().isoformat()
+            scan_state["is_scanning"] = True
+            scan_state["scan_count"] += 1
+            num = scan_state["scan_count"]
+            logger.info(f"━━━━ SCAN #{num} 開始 ({len(WATCHLIST)}銘柄) ━━━━")
+
+            try:
+                await asyncio.to_thread(run_full_scan)
+                scan_state["last_scan_at"] = datetime.datetime.now().isoformat()
+            except Exception as e:
+                logger.error(f"スキャン実行エラー: {e}", exc_info=True)
+
+            next_time = datetime.datetime.now() + datetime.timedelta(seconds=SCAN_INTERVAL)
+            scan_state["next_scan_at"] = next_time.isoformat()
+            scan_state["is_scanning"] = False
+
+            logger.info(f"━━━━ SCAN #{num} 完了 — 次回: {next_time.strftime('%H:%M:%S')} ━━━━")
+            await asyncio.sleep(SCAN_INTERVAL)
+
+        except asyncio.CancelledError:
+            logger.info("スキャンループ: キャンセルされました")
+            raise
         except Exception as e:
-            logger.error(f"スキャンエラー: {e}")
-
-        next_time = datetime.datetime.now() + datetime.timedelta(seconds=SCAN_INTERVAL)
-        scan_state["next_scan_at"] = next_time.isoformat()
-        scan_state["is_scanning"] = False
-
-        logger.info(f"━━━━ SCAN #{num} 完了 — 次回: {next_time.strftime('%H:%M:%S')} ━━━━")
-        await asyncio.sleep(SCAN_INTERVAL)
+            scan_state["is_scanning"] = False
+            logger.error(f"スキャンループ致命的エラー — 30秒後に再開: {e}", exc_info=True)
+            await asyncio.sleep(30)
 
 
 # ============================================================
