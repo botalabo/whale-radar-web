@@ -417,7 +417,7 @@ def format_sentiment_jp(
 
         detail = (
             f"（CALL:{call_vol:,} vs PUT:{put_vol:,} | "
-            f"補正スコア 牛:{bull_score:.0f} 熊:{bear_score:.0f}）"
+            f"補正スコア Bull:{bull_score:.0f} Bear:{bear_score:.0f}）"
         )
         return (
             f"  \U0001f4ca 【{ticker}】 {price_str} | 結論: {verdict}\n"
