@@ -316,19 +316,24 @@ def run_full_scan() -> None:
         sentiment_text = format_sentiment_jp(ticker, whale_alerts, ticker_info["price"])
 
         # --- タイムスタンプ・日本語テキスト付加 ---
-        now_str = datetime.datetime.now().strftime("%H:%M:%S")
+        now = datetime.datetime.now()
+        now_str = now.strftime("%H:%M:%S")
+        now_date = now.strftime("%Y-%m-%d")
 
         for a in whale_alerts:
             a["detected_at"] = now_str
+            a["detected_date"] = now_date
             a["sentiment"] = sentiment
             a["text_jp"] = format_whale_alert_history_jp(a)
 
         for a in spoofing_alerts:
             a["detected_at"] = now_str
+            a["detected_date"] = now_date
             a["text_jp"] = format_spoofing_history_jp(a, current_price)
 
         for a in insider_alerts:
             a["detected_at"] = now_str
+            a["detected_date"] = now_date
             a["text_jp"] = format_insider_alert_jp(a)
 
         # --- 変化があったアラートのみ履歴に追加 ---

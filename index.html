@@ -546,6 +546,11 @@
     border-color: var(--neon-red);
   }
   .copy-btn.red:hover { background: #220000; }
+  .copy-btn.active {
+    background: var(--neon-cyan) !important;
+    color: #000 !important;
+    border-color: var(--neon-cyan) !important;
+  }
   .copy-btn.flash {
     background: var(--neon-green) !important;
     color: #000 !important;
@@ -1076,7 +1081,8 @@
         <div class="sec-title green">&ensp;&#x1F3AF;&ensp;クジラの予測・判定履歴 (PREDICTION RECORD)</div>
         <span style="display:flex;gap:4px;">
           <button class="copy-btn green" id="copyPredBtn" onclick="copyPrediction()">&#x1F3AF; 実績コピー</button>
-          <button class="copy-btn red" onclick="clearPredictions()">&#x1F5D1; 消去</button>
+          <button class="copy-btn cyan" id="todayPredBtn" onclick="toggleTodayPred()">&#x1F4C5; 当日のみ</button>
+          <button class="copy-btn red" onclick="clearPredictions()">&#x1F5D1; 全消去</button>
         </span>
       </div>
       <div class="logbox pred" id="predBox" onclick="openExpand('pred')"></div>
@@ -1088,7 +1094,8 @@
         <div class="sec-title red">&ensp;&#x1F6A8;&ensp;WHALE ALERT 履歴</div>
         <span style="display:flex;gap:4px;">
           <button class="copy-btn cyan" id="copyAlertBtn" onclick="copyAlertHistory()">&#x1F4CB; 履歴コピー</button>
-          <button class="copy-btn red" onclick="clearHistory()">&#x1F5D1; 消去</button>
+          <button class="copy-btn cyan" id="todayAlertBtn" onclick="toggleTodayAlert()">&#x1F4C5; 当日のみ</button>
+          <button class="copy-btn red" onclick="clearHistory()">&#x1F5D1; 全消去</button>
         </span>
       </div>
       <div class="logbox hist" id="alertBox" onclick="openExpand('alert')"></div>
@@ -1332,9 +1339,11 @@ document.getElementById('tkcfgInput').addEventListener('keydown', function(e) {
 });
 
 /* ---------- Prediction tracking (client-side) ---------- */
-const predictions = {};   // { ticker: { direction, price, time } }
+let predictions = {};   // { ticker: { direction, price, time } }
 let lastScanCount = -1;
 let watchlistBuilt = false;
+let filterTodayPred = false;
+let filterTodayAlert = false;
 let totalAlertCount = 0;
 
 /* ---------- Latest tickers data (for modal) ---------- */
@@ -1482,6 +1491,9 @@ function nowTS() {
          String(d.getMinutes()).padStart(2,'0') + ':' +
          String(d.getSeconds()).padStart(2,'0');
 }
+function todayStr() {
+  return new Date().toISOString().split('T')[0];
+}
 
 /* ============================================================
    Direction label (desktop _get_direction_label)
@@ -1588,8 +1600,10 @@ function renderPredBox(tickers, marketOpen, marketStatus) {
   }
 
   // Current sentiment for tickers with whale alerts
+  const today = todayStr();
   for (const [sym, info] of Object.entries(tickers)) {
     if (!info.whale_alerts || info.whale_alerts.length === 0) continue;
+    if (filterTodayPred && info.whale_alerts[0].detected_date && info.whale_alerts[0].detected_date !== today) continue;
     const text = info.sentiment_text;
     if (!text) continue;
 
@@ -1625,6 +1639,7 @@ function renderPredBox(tickers, marketOpen, marketStatus) {
 function renderAlertBox(tickers) {
   const box = document.getElementById('alertBox');
   let html = '';
+  const today = todayStr();
 
   for (const [sym, info] of Object.entries(tickers)) {
     const curPrice = info.price ? info.price.price : null;
@@ -1632,6 +1647,7 @@ function renderAlertBox(tickers) {
     // Whale alerts
     if (info.whale_alerts) {
       for (const a of info.whale_alerts) {
+        if (filterTodayAlert && a.detected_date && a.detected_date !== today) continue;
         const t = a.detected_at || nowTS();
         const text = a.text_jp || fmtWhale(a);
         html += logLine(t, text, 'b-red');
@@ -1643,6 +1659,7 @@ function renderAlertBox(tickers) {
     // Spoofing alerts
     if (info.spoofing_alerts) {
       for (const a of info.spoofing_alerts) {
+        if (filterTodayAlert && a.detected_date && a.detected_date !== today) continue;
         const t = a.detected_at || nowTS();
         const near = curPrice && curPrice > 0 && a.strike > 0 &&
           Math.abs(a.strike - curPrice) / curPrice <= 0.03;
@@ -1656,6 +1673,7 @@ function renderAlertBox(tickers) {
     // Insider alerts
     if (info.insider_alerts) {
       for (const a of info.insider_alerts) {
+        if (filterTodayAlert && a.detected_date && a.detected_date !== today) continue;
         const t = a.detected_at || nowTS();
         const text = a.text_jp || fmtInsider(a);
         html += logLine(t, text, 'b-yellow');
@@ -1902,6 +1920,15 @@ function copyAlertHistory() {
     flashBtn('copyAlertBtn');
     showSbFeedback('\u2705 \u30A2\u30E9\u30FC\u30C8\u5C65\u6B74\u3092\u30AF\u30EA\u30C3\u30D7\u30DC\u30FC\u30C9\u306B\u30B3\u30D4\u30FC\u3057\u307E\u3057\u305F');
   });
+}
+
+function toggleTodayPred() {
+  filterTodayPred = !filterTodayPred;
+  document.getElementById('todayPredBtn').classList.toggle('active', filterTodayPred);
+}
+function toggleTodayAlert() {
+  filterTodayAlert = !filterTodayAlert;
+  document.getElementById('todayAlertBtn').classList.toggle('active', filterTodayAlert);
 }
 
 async function clearPredictions() {
