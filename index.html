@@ -319,79 +319,79 @@
       <h1><i class="whale-icon">&#x1F40B;</i> BOTALAB WHALE RADAR</h1>
     </div>
     <div class="header-right">
-      <span id="scanStatus" class="cyan">Initializing...</span>
+      <span id="scanStatus" class="cyan">起動中...</span>
       <span>|</span>
-      <span>SCANS: <span id="scanCount">0</span></span>
+      <span>スキャン: <span id="scanCount">0</span>回</span>
       <span>|</span>
-      <span>Updated: <span id="lastUpdate">--:--:--</span></span>
+      <span>最終更新: <span id="lastUpdate">--:--:--</span></span>
     </div>
   </div>
 
   <!-- ======== STATUS BAR ======== -->
   <div class="status-bar">
-    <span><span class="label">STATUS</span> <span class="val" id="statusText">Waiting...</span></span>
-    <span><span class="label">NEXT</span> <span class="val" id="nextScan">--:--:--</span></span>
-    <span><span class="label">TICKERS</span> <span class="val" id="tickerCount">0</span></span>
-    <span><span class="label">REFRESH</span> <span class="val" id="refreshTimer">5:00</span></span>
+    <span><span class="label">状態</span> <span class="val" id="statusText">待機中...</span></span>
+    <span><span class="label">次回スキャン</span> <span class="val" id="nextScan">--:--:--</span></span>
+    <span><span class="label">監視銘柄数</span> <span class="val" id="tickerCount">0</span></span>
+    <span><span class="label">自動更新</span> <span class="val" id="refreshTimer">5:00</span></span>
   </div>
 
   <!-- ======== STATS ======== -->
   <div class="stats">
     <div class="stat s-total">
-      <div class="lbl">TOTAL ALERTS</div>
+      <div class="lbl">検知アラート合計</div>
       <div class="num" id="stTotal">0</div>
     </div>
     <div class="stat s-whale">
-      <div class="lbl">WHALE OPTIONS</div>
+      <div class="lbl">大口オプション</div>
       <div class="num" id="stWhale">0</div>
     </div>
     <div class="stat s-spoof">
-      <div class="lbl">SPOOFING WALLS</div>
+      <div class="lbl">異常板（壁）</div>
       <div class="num" id="stSpoof">0</div>
     </div>
     <div class="stat s-insider">
-      <div class="lbl">INSIDER BUYS</div>
+      <div class="lbl">インサイダー購入</div>
       <div class="num" id="stInsider">0</div>
     </div>
   </div>
 
   <!-- ======== ALERT PANELS ======== -->
   <div class="panels">
-    <!-- Whale Options -->
+    <!-- 大口オプション -->
     <div class="panel p-whale">
       <div class="panel-hdr">
         <span class="ico">&#x1F6A8;</span>
-        <h2>WHALE OPTIONS</h2>
+        <h2>大口オプション検知</h2>
         <span class="cnt" id="cntWhale">0</span>
       </div>
-      <div id="listWhale"><div class="empty">No whale alerts detected</div></div>
+      <div id="listWhale"><div class="empty">大口アラートなし</div></div>
     </div>
 
-    <!-- Spoofing Walls -->
+    <!-- 異常板 -->
     <div class="panel p-spoof">
       <div class="panel-hdr">
         <span class="ico">&#x26A0;&#xFE0F;</span>
-        <h2>SPOOFING WALLS</h2>
+        <h2>異常板（壁）検知</h2>
         <span class="cnt" id="cntSpoof">0</span>
       </div>
-      <div id="listSpoof"><div class="empty">No spoofing walls detected</div></div>
+      <div id="listSpoof"><div class="empty">異常板アラートなし</div></div>
     </div>
 
-    <!-- Insider Buys -->
+    <!-- インサイダー -->
     <div class="panel p-insider full">
       <div class="panel-hdr">
         <span class="ico">&#x1F575;&#xFE0F;</span>
-        <h2>INSIDER BUYS</h2>
+        <h2>インサイダー購入検知</h2>
         <span class="cnt" id="cntInsider">0</span>
       </div>
-      <div id="listInsider"><div class="empty">No insider buys detected</div></div>
+      <div id="listInsider"><div class="empty">インサイダー購入なし</div></div>
     </div>
   </div>
 
   <!-- ======== FOOTER ======== -->
   <div class="footer">
-    BOTALAB WHALE RADAR &mdash; Auto-refresh <span class="cyan" id="footerTimer">5:00</span>
-    &nbsp;|&nbsp; Data: yfinance + finviz &nbsp;|&nbsp; Cyberpunk Edition
+    BOTALAB WHALE RADAR &mdash; 自動更新: <span class="cyan" id="footerTimer">5:00</span>
+    &nbsp;|&nbsp; データ: yfinance + finviz
   </div>
 
 </div>
@@ -409,7 +409,7 @@ let cdTimer = null;
 async function load() {
   const st = document.getElementById('scanStatus');
   st.className = 'orange';
-  st.textContent = 'Fetching...';
+  st.textContent = '取得中...';
   try {
     const [alertsRes, statusRes] = await Promise.all([
       fetch(API + '/api/alerts'),
@@ -420,12 +420,12 @@ async function load() {
     const status = await statusRes.json();
     render(alerts, status);
     st.className = 'cyan';
-    st.textContent = alerts.is_scanning ? 'Scanning...' : 'Monitoring';
+    st.textContent = alerts.is_scanning ? '\u30b9\u30ad\u30e3\u30f3\u4e2d...' : '\u76e3\u8996\u4e2d';
   } catch (e) {
     console.error(e);
     st.className = '';
     st.style.color = 'var(--neon-red)';
-    st.textContent = 'Connection Error';
+    st.textContent = '\u63a5\u7d9a\u30a8\u30e9\u30fc';
   }
   countdown = REFRESH_MS / 1000;
 }
@@ -448,7 +448,7 @@ function render(data, status) {
 
   // status bar
   document.getElementById('statusText').textContent =
-    data.is_scanning ? 'Scanning...' : 'Monitoring';
+    data.is_scanning ? '\u30b9\u30ad\u30e3\u30f3\u4e2d...' : '\u76e3\u8996\u4e2d';
   document.getElementById('tickerCount').textContent = status.watchlist_count;
   if (data.next_scan_at) {
     document.getElementById('nextScan').textContent =
@@ -472,11 +472,11 @@ function render(data, status) {
 function renderWhales(arr) {
   const el = document.getElementById('listWhale');
   document.getElementById('cntWhale').textContent = arr.length;
-  if (!arr.length) { el.innerHTML = '<div class="empty">No whale alerts detected</div>'; return; }
+  if (!arr.length) { el.innerHTML = '<div class="empty">\u5927\u53e3\u30a2\u30e9\u30fc\u30c8\u306a\u3057</div>'; return; }
   el.innerHTML = arr.map(a => {
     const c = a.option_type === 'CALL';
-    const dir = c ? '&#x1F4C8; UP' : '&#x1F4C9; DOWN';
-    const r = a.ratio === null || a.ratio === Infinity ? '&infin;x' : a.ratio + 'x';
+    const dir = c ? '&#x1F4C8; \u4e0a\u6607\u30b7\u30b0\u30ca\u30eb' : '&#x1F4C9; \u4e0b\u843d\u30b7\u30b0\u30ca\u30eb';
+    const r = a.ratio === null || a.ratio === Infinity ? '\u221e\u500d(\u65b0\u898f)' : a.ratio + '\u500d';
     return `<div class="item ${c ? 'w-call' : 'w-put'}">
       <div class="row1">
         <span class="tkr ${c ? 'call' : 'put'}">${a.ticker}</span>
@@ -484,11 +484,11 @@ function renderWhales(arr) {
         <span style="font-size:11px">${dir}</span>
         <span class="meta">
           <span>$${a.strike}</span>
-          <span>Vol:${a.volume.toLocaleString()}</span>
-          <span class="hi">${r}</span>
+          <span>\u51fa\u6765\u9ad8:${a.volume.toLocaleString()}</span>
+          <span class="hi">\u901a\u5e38\u306e${r}</span>
         </span>
       </div>
-      <div class="sub">Exp: ${a.expiry} | OI: ${a.open_interest.toLocaleString()}</div>
+      <div class="sub">\u6e80\u671f: ${a.expiry} | \u5efa\u7389: ${a.open_interest.toLocaleString()}</div>
       <div class="ts">${a.detected_at || ''}</div>
     </div>`;
   }).join('');
@@ -498,25 +498,26 @@ function renderWhales(arr) {
 function renderSpoofs(arr) {
   const el = document.getElementById('listSpoof');
   document.getElementById('cntSpoof').textContent = arr.length;
-  if (!arr.length) { el.innerHTML = '<div class="empty">No spoofing walls detected</div>'; return; }
+  if (!arr.length) { el.innerHTML = '<div class="empty">\u7570\u5e38\u677f\u30a2\u30e9\u30fc\u30c8\u306a\u3057</div>'; return; }
   el.innerHTML = arr.map(a => {
     const ask = a.wall_side === 'ASK';
-    const dir = ask ? '&#x26A0; ASK Wall (Sell)' : '&#x26A0; BID Wall (Buy)';
+    const wallDir = ask ? '\u58f2\u308a\u58c1' : '\u8cb7\u3044\u58c1';
+    const dir = ask ? '&#x26A0; \u58f2\u308a\u58c1\u691c\u77e5' : '&#x26A0; \u8cb7\u3044\u58c1\u691c\u77e5';
     const warn = ask
-      ? 'Upper resistance — watch for pullback'
-      : 'Lower support — watch for breakdown';
+      ? '\u4e0a\u5024\u3092\u62bc\u3055\u3048\u308b\u914d\u7f6e\u3002\u53cd\u843d\u306e\u53ef\u80fd\u6027\u306b\u6ce8\u610f'
+      : '\u4e0b\u5024\u3092\u652f\u3048\u308b\u914d\u7f6e\u3002\u58c1\u6d88\u5931\u6642\u306e\u4e0b\u629c\u3051\u306b\u6ce8\u610f';
     return `<div class="item ${ask ? 'sp-ask' : 'sp-bid'}">
       <div class="row1">
         <span class="tkr sp">${a.ticker}</span>
-        <span class="badge ${ask ? 'b-ask' : 'b-bid'}">${a.wall_side}</span>
+        <span class="badge ${ask ? 'b-ask' : 'b-bid'}">${wallDir}</span>
         <span style="font-size:11px">${dir}</span>
         <span class="meta">
           <span>$${a.strike}</span>
-          <span>${a.wall_size.toLocaleString()} ct</span>
-          <span class="hi">${a.size_ratio}x</span>
+          <span>${a.wall_size.toLocaleString()}\u679a</span>
+          <span class="hi">\u677f\u539a\u6bd4${a.size_ratio}\u500d</span>
         </span>
       </div>
-      <div class="sub">${a.option_type} | Exp: ${a.expiry} | ${warn}</div>
+      <div class="sub">${a.option_type} | \u6e80\u671f: ${a.expiry} | ${warn}</div>
       <div class="ts">${a.detected_at || ''}</div>
     </div>`;
   }).join('');
@@ -526,18 +527,18 @@ function renderSpoofs(arr) {
 function renderInsiders(arr) {
   const el = document.getElementById('listInsider');
   document.getElementById('cntInsider').textContent = arr.length;
-  if (!arr.length) { el.innerHTML = '<div class="empty">No insider buys detected</div>'; return; }
+  if (!arr.length) { el.innerHTML = '<div class="empty">\u30a4\u30f3\u30b5\u30a4\u30c0\u30fc\u8cfc\u5165\u306a\u3057</div>'; return; }
   el.innerHTML = arr.map(a => `<div class="item ins">
     <div class="row1">
       <span class="tkr ins">${a.ticker}</span>
-      <span class="badge b-buy">BUY</span>
+      <span class="badge b-buy">\u8cfc\u5165</span>
       <span style="font-size:11px">${a.insider_name}</span>
       <span class="meta">
         <span>${a.relationship}</span>
         <span>${a.value}</span>
       </span>
     </div>
-    <div class="sub">${a.transaction} | ${a.date} | Shares: ${a.shares}</div>
+    <div class="sub">${a.transaction} | ${a.date} | \u682a\u6570: ${a.shares}</div>
     <div class="ts">${a.detected_at || ''}</div>
   </div>`).join('');
 }

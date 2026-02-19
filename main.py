@@ -61,7 +61,7 @@ def _env_int(key: str, default: int = 0) -> int:
 # ============================================================
 # 設定 (すべて .env から)
 # ============================================================
-WATCHLIST = [s.strip() for s in _env("WATCHLIST", "NVDA,AMD,TSLA").split(",") if s.strip()]
+WATCHLIST = [s.strip() for s in _env("WATCHLIST", "NVDA,AMD,SMCI,PLTR,ARM,MSTR,COIN,MARA,TSLA,SOFI,RKLB,GRRR,DJT,HOOD,AAPL,AMZN,META,GOOGL,MSFT,NFLX").split(",") if s.strip()]
 OPTION_VOLUME_THRESHOLD = _env_float("OPTION_VOLUME_THRESHOLD", 3.0)
 SPOOFING_MULTIPLIER = _env_float("SPOOFING_MULTIPLIER", 10.0)
 MIN_SPOOFING_CONTRACTS = _env_int("MIN_SPOOFING_CONTRACTS", 500)
