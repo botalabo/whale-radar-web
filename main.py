@@ -631,6 +631,40 @@ async def remove_ticker(request: Request):
     return JSONResponse(content={"ok": True, "watchlist": WATCHLIST})
 
 
+@app.post("/api/clear/predictions")
+async def clear_predictions():
+    """センチメント予測データをクリアする。"""
+    for info in latest_tickers.values():
+        info["sentiment"] = None
+        info["sentiment_text"] = ""
+        info["whale_alerts"] = []
+    latest_summary["whale_count"] = 0
+    latest_summary["total_alerts"] = (
+        latest_summary["spoofing_count"] + latest_summary["insider_count"]
+    )
+    logger.info("実績データをクリアしました")
+    return JSONResponse(content={"ok": True})
+
+
+@app.post("/api/clear/history")
+async def clear_history():
+    """アラート履歴をクリアする。"""
+    alert_history.clear()
+    for info in latest_tickers.values():
+        info["whale_alerts"] = []
+        info["spoofing_alerts"] = []
+        info["insider_alerts"] = []
+        info["alert_count"] = 0
+        info["changed"] = False
+    latest_summary["whale_count"] = 0
+    latest_summary["spoofing_count"] = 0
+    latest_summary["insider_count"] = 0
+    latest_summary["total_alerts"] = 0
+    last_fingerprints.clear()
+    logger.info("アラート履歴をクリアしました")
+    return JSONResponse(content={"ok": True})
+
+
 # ============================================================
 # 直接実行
 # ============================================================

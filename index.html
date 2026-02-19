@@ -541,6 +541,11 @@
     border-color: var(--neon-cyan);
   }
   .copy-btn.cyan:hover { background: #001A2A; }
+  .copy-btn.red {
+    color: var(--neon-red); background: #1A1A30;
+    border-color: var(--neon-red);
+  }
+  .copy-btn.red:hover { background: #220000; }
   .copy-btn.flash {
     background: var(--neon-green) !important;
     color: #000 !important;
@@ -1069,7 +1074,10 @@
     <div class="pred-section">
       <div class="sec-header">
         <div class="sec-title green">&ensp;&#x1F3AF;&ensp;クジラの予測・判定履歴 (PREDICTION RECORD)</div>
-        <button class="copy-btn green" id="copyPredBtn" onclick="copyPrediction()">&#x1F3AF; 実績コピー</button>
+        <span style="display:flex;gap:4px;">
+          <button class="copy-btn green" id="copyPredBtn" onclick="copyPrediction()">&#x1F3AF; 実績コピー</button>
+          <button class="copy-btn red" onclick="clearPredictions()">&#x1F5D1; 消去</button>
+        </span>
       </div>
       <div class="logbox pred" id="predBox" onclick="openExpand('pred')"></div>
     </div>
@@ -1078,7 +1086,10 @@
     <div class="alert-section">
       <div class="sec-header">
         <div class="sec-title red">&ensp;&#x1F6A8;&ensp;WHALE ALERT 履歴</div>
-        <button class="copy-btn cyan" id="copyAlertBtn" onclick="copyAlertHistory()">&#x1F4CB; 履歴コピー</button>
+        <span style="display:flex;gap:4px;">
+          <button class="copy-btn cyan" id="copyAlertBtn" onclick="copyAlertHistory()">&#x1F4CB; 履歴コピー</button>
+          <button class="copy-btn red" onclick="clearHistory()">&#x1F5D1; 消去</button>
+        </span>
       </div>
       <div class="logbox hist" id="alertBox" onclick="openExpand('alert')"></div>
 
@@ -1891,6 +1902,31 @@ function copyAlertHistory() {
     flashBtn('copyAlertBtn');
     showSbFeedback('\u2705 \u30A2\u30E9\u30FC\u30C8\u5C65\u6B74\u3092\u30AF\u30EA\u30C3\u30D7\u30DC\u30FC\u30C9\u306B\u30B3\u30D4\u30FC\u3057\u307E\u3057\u305F');
   });
+}
+
+async function clearPredictions() {
+  if (!confirm('\u5B9F\u7E3E\u3092\u3059\u3079\u3066\u6D88\u53BB\u3057\u307E\u3059\u304B\uFF1F')) return;
+  try {
+    await fetch(API + '/api/clear/predictions', { method: 'POST' });
+    predictions = {};
+    document.getElementById('predBox').innerHTML =
+      '<div class="ll c-dim">\u23F3 \u30BB\u30F3\u30C1\u30E1\u30F3\u30C8\u89E3\u6790\u5F85\u6A5F\u4E2D...</div>';
+    showSbFeedback('\u2705 \u5B9F\u7E3E\u3092\u6D88\u53BB\u3057\u307E\u3057\u305F');
+  } catch (_) {
+    showSbFeedback('\u274C \u6D88\u53BB\u306B\u5931\u6557\u3057\u307E\u3057\u305F');
+  }
+}
+
+async function clearHistory() {
+  if (!confirm('\u5C65\u6B74\u3092\u3059\u3079\u3066\u6D88\u53BB\u3057\u307E\u3059\u304B\uFF1F')) return;
+  try {
+    await fetch(API + '/api/clear/history', { method: 'POST' });
+    document.getElementById('alertBox').innerHTML =
+      '<div class="ll c-dim">\u23F3 \u30A2\u30E9\u30FC\u30C8\u5F85\u6A5F\u4E2D...</div>';
+    showSbFeedback('\u2705 \u5C65\u6B74\u3092\u6D88\u53BB\u3057\u307E\u3057\u305F');
+  } catch (_) {
+    showSbFeedback('\u274C \u6D88\u53BB\u306B\u5931\u6557\u3057\u307E\u3057\u305F');
+  }
 }
 
 function showSbFeedback(msg) {
