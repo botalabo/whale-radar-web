@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BOTALAB WHALE RADAR</title>
+<style>
+  /* ============================================
+     Cyberpunk Palette — whale_radar_gui.py 準拠
+     ============================================ */
+  :root {
+    --neon-green:  #00FF41;
+    --neon-cyan:   #00E5FF;
+    --neon-red:    #FF0040;
+    --neon-yellow: #FFE600;
+    --neon-orange: #FF8800;
+    --neon-pink:   #FF2D6A;
+    --dark-bg:     #0A0A0F;
+    --panel-bg:    #111118;
+    --card-bg:     #1A1A25;
+    --dim-text:    #556677;
+    --white-text:  #E0E0E0;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--dark-bg);
+    color: var(--white-text);
+    font-family: 'Courier New', 'Consolas', 'SF Mono', monospace;
+    min-height: 100vh;
+    line-height: 1.5;
+  }
+
+  /* Grid overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      linear-gradient(rgba(0,229,255,.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,255,.03) 1px, transparent 1px);
+    background-size: 60px 60px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Scanlines */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg, transparent, transparent 2px,
+      rgba(0,0,0,.04) 2px, rgba(0,0,0,.04) 4px
+    );
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  .wrap {
+    position: relative;
+    z-index: 1;
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 12px;
+  }
+
+  /* ============================================ HEADER */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    background: var(--panel-bg);
+    border: 1px solid rgba(0,229,255,.2);
+    border-radius: 10px;
+    padding: 14px 20px;
+    margin-bottom: 12px;
+  }
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .live-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--neon-red);
+    box-shadow: 0 0 8px var(--neon-red);
+    animation: blink 1s ease-in-out infinite;
+  }
+  @keyframes blink { 50% { opacity: .25; } }
+
+  .header h1 {
+    font-size: 20px;
+    color: var(--neon-cyan);
+    text-shadow: 0 0 16px rgba(0,229,255,.5);
+    letter-spacing: 2px;
+    white-space: nowrap;
+  }
+
+  .header h1 .whale-icon { font-style: normal; }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    font-size: 11px;
+    color: var(--dim-text);
+  }
+
+  .header-right .cyan  { color: var(--neon-cyan); }
+  .header-right .orange { color: var(--neon-orange); animation: pulse 1.4s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: .35; } }
+
+  /* ============================================ STATUS BAR */
+  .status-bar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    background: var(--panel-bg);
+    border: 1px solid rgba(255,230,0,.12);
+    border-radius: 8px;
+    padding: 10px 16px;
+    margin-bottom: 12px;
+    font-size: 11px;
+    color: var(--dim-text);
+  }
+
+  .status-bar .label { color: var(--neon-yellow); font-weight: bold; }
+  .status-bar .val   { color: var(--white-text); }
+
+  /* ============================================ STATS */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  .stat {
+    background: var(--card-bg);
+    border: 1px solid rgba(0,229,255,.08);
+    border-radius: 8px;
+    padding: 14px;
+    text-align: center;
+    transition: border-color .3s;
+  }
+  .stat:hover { border-color: var(--neon-cyan); }
+
+  .stat .lbl {
+    font-size: 9px;
+    color: var(--dim-text);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .stat .num { font-size: 26px; font-weight: bold; }
+  .stat.s-total .num { color: var(--neon-cyan);   text-shadow: 0 0 10px rgba(0,229,255,.4); }
+  .stat.s-whale .num { color: var(--neon-green);  text-shadow: 0 0 10px rgba(0,255,65,.4); }
+  .stat.s-spoof .num { color: var(--neon-yellow); text-shadow: 0 0 10px rgba(255,230,0,.4); }
+  .stat.s-insider .num { color: var(--neon-pink); text-shadow: 0 0 10px rgba(255,45,106,.4); }
+
+  /* ============================================ PANELS */
+  .panels {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .panel {
+    background: var(--panel-bg);
+    border: 1px solid rgba(0,229,255,.12);
+    border-radius: 10px;
+    padding: 14px;
+    max-height: 480px;
+    overflow-y: auto;
+  }
+
+  .panel::-webkit-scrollbar { width: 5px; }
+  .panel::-webkit-scrollbar-track { background: transparent; }
+  .panel::-webkit-scrollbar-thumb { background: var(--dim-text); border-radius: 3px; }
+
+  .panel.full { grid-column: 1 / -1; }
+
+  .panel-hdr {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(255,255,255,.04);
+  }
+  .panel-hdr .ico { font-size: 16px; }
+  .panel-hdr h2 { font-size: 13px; letter-spacing: 1px; }
+  .panel-hdr .cnt {
+    margin-left: auto;
+    font-size: 11px;
+    padding: 2px 10px;
+    border-radius: 10px;
+    font-weight: bold;
+  }
+
+  .p-whale .panel-hdr h2 { color: var(--neon-green); }
+  .p-whale .cnt { background: rgba(0,255,65,.12); color: var(--neon-green); }
+
+  .p-spoof .panel-hdr h2 { color: var(--neon-yellow); }
+  .p-spoof .cnt { background: rgba(255,230,0,.12); color: var(--neon-yellow); }
+
+  .p-insider .panel-hdr h2 { color: var(--neon-pink); }
+  .p-insider .cnt { background: rgba(255,45,106,.12); color: var(--neon-pink); }
+
+  /* ============================================ ALERT ITEMS */
+  .item {
+    background: var(--card-bg);
+    border-left: 3px solid;
+    border-radius: 5px;
+    padding: 10px 12px;
+    margin-bottom: 6px;
+    transition: background .2s;
+  }
+  .item:hover { background: #222233; }
+
+  .item.w-call    { border-color: var(--neon-green); }
+  .item.w-put     { border-color: var(--neon-red); }
+  .item.sp-ask    { border-color: var(--neon-yellow); }
+  .item.sp-bid    { border-color: var(--neon-orange); }
+  .item.ins       { border-color: var(--neon-pink); }
+
+  .row1 {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .tkr {
+    font-size: 14px;
+    font-weight: bold;
+    min-width: 48px;
+  }
+  .tkr.call  { color: var(--neon-green); }
+  .tkr.put   { color: var(--neon-red); }
+  .tkr.sp    { color: var(--neon-yellow); }
+  .tkr.ins   { color: var(--neon-pink); }
+
+  .badge {
+    font-size: 9px;
+    padding: 1px 7px;
+    border-radius: 3px;
+    font-weight: bold;
+    letter-spacing: .5px;
+  }
+  .b-call { background: rgba(0,255,65,.12);  color: var(--neon-green); }
+  .b-put  { background: rgba(255,0,64,.12);  color: var(--neon-red); }
+  .b-ask  { background: rgba(255,230,0,.12); color: var(--neon-yellow); }
+  .b-bid  { background: rgba(255,136,0,.12); color: var(--neon-orange); }
+  .b-buy  { background: rgba(255,45,106,.12); color: var(--neon-pink); }
+
+  .meta {
+    margin-left: auto;
+    font-size: 11px;
+    color: var(--dim-text);
+    display: flex;
+    gap: 12px;
+  }
+  .meta .hi { color: var(--neon-orange); }
+
+  .sub {
+    font-size: 10px;
+    color: var(--dim-text);
+    margin-top: 4px;
+  }
+
+  .ts {
+    font-size: 9px;
+    color: #444;
+    margin-top: 3px;
+  }
+
+  .empty {
+    text-align: center;
+    color: var(--dim-text);
+    font-size: 11px;
+    padding: 20px;
+  }
+
+  /* ============================================ FOOTER */
+  .footer {
+    text-align: center;
+    font-size: 9px;
+    color: var(--dim-text);
+    padding: 8px;
+    letter-spacing: 1px;
+  }
+  .footer .cyan { color: var(--neon-cyan); }
+
+  /* ============================================ RESPONSIVE */
+  @media (max-width: 768px) {
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    .panels { grid-template-columns: 1fr; }
+    .header { flex-direction: column; align-items: flex-start; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ======== HEADER ======== -->
+  <div class="header">
+    <div class="header-left">
+      <div class="live-dot" id="liveDot"></div>
+      <h1><i class="whale-icon">&#x1F40B;</i> BOTALAB WHALE RADAR</h1>
+    </div>
+    <div class="header-right">
+      <span id="scanStatus" class="cyan">Initializing...</span>
+      <span>|</span>
+      <span>SCANS: <span id="scanCount">0</span></span>
+      <span>|</span>
+      <span>Updated: <span id="lastUpdate">--:--:--</span></span>
+    </div>
+  </div>
+
+  <!-- ======== STATUS BAR ======== -->
+  <div class="status-bar">
+    <span><span class="label">STATUS</span> <span class="val" id="statusText">Waiting...</span></span>
+    <span><span class="label">NEXT</span> <span class="val" id="nextScan">--:--:--</span></span>
+    <span><span class="label">TICKERS</span> <span class="val" id="tickerCount">0</span></span>
+    <span><span class="label">REFRESH</span> <span class="val" id="refreshTimer">5:00</span></span>
+  </div>
+
+  <!-- ======== STATS ======== -->
+  <div class="stats">
+    <div class="stat s-total">
+      <div class="lbl">TOTAL ALERTS</div>
+      <div class="num" id="stTotal">0</div>
+    </div>
+    <div class="stat s-whale">
+      <div class="lbl">WHALE OPTIONS</div>
+      <div class="num" id="stWhale">0</div>
+    </div>
+    <div class="stat s-spoof">
+      <div class="lbl">SPOOFING WALLS</div>
+      <div class="num" id="stSpoof">0</div>
+    </div>
+    <div class="stat s-insider">
+      <div class="lbl">INSIDER BUYS</div>
+      <div class="num" id="stInsider">0</div>
+    </div>
+  </div>
+
+  <!-- ======== ALERT PANELS ======== -->
+  <div class="panels">
+    <!-- Whale Options -->
+    <div class="panel p-whale">
+      <div class="panel-hdr">
+        <span class="ico">&#x1F6A8;</span>
+        <h2>WHALE OPTIONS</h2>
+        <span class="cnt" id="cntWhale">0</span>
+      </div>
+      <div id="listWhale"><div class="empty">No whale alerts detected</div></div>
+    </div>
+
+    <!-- Spoofing Walls -->
+    <div class="panel p-spoof">
+      <div class="panel-hdr">
+        <span class="ico">&#x26A0;&#xFE0F;</span>
+        <h2>SPOOFING WALLS</h2>
+        <span class="cnt" id="cntSpoof">0</span>
+      </div>
+      <div id="listSpoof"><div class="empty">No spoofing walls detected</div></div>
+    </div>
+
+    <!-- Insider Buys -->
+    <div class="panel p-insider full">
+      <div class="panel-hdr">
+        <span class="ico">&#x1F575;&#xFE0F;</span>
+        <h2>INSIDER BUYS</h2>
+        <span class="cnt" id="cntInsider">0</span>
+      </div>
+      <div id="listInsider"><div class="empty">No insider buys detected</div></div>
+    </div>
+  </div>
+
+  <!-- ======== FOOTER ======== -->
+  <div class="footer">
+    BOTALAB WHALE RADAR &mdash; Auto-refresh <span class="cyan" id="footerTimer">5:00</span>
+    &nbsp;|&nbsp; Data: yfinance + finviz &nbsp;|&nbsp; Cyberpunk Edition
+  </div>
+
+</div>
+
+<script>
+/* ============================================================
+   Whale Radar — Dashboard JS
+   ============================================================ */
+const API = window.location.origin;
+const REFRESH_MS = 5 * 60 * 1000;
+let countdown = REFRESH_MS / 1000;
+let cdTimer = null;
+
+/* ---------- fetch ---------- */
+async function load() {
+  const st = document.getElementById('scanStatus');
+  st.className = 'orange';
+  st.textContent = 'Fetching...';
+  try {
+    const [alertsRes, statusRes] = await Promise.all([
+      fetch(API + '/api/alerts'),
+      fetch(API + '/api/status'),
+    ]);
+    if (!alertsRes.ok || !statusRes.ok) throw new Error('HTTP error');
+    const alerts = await alertsRes.json();
+    const status = await statusRes.json();
+    render(alerts, status);
+    st.className = 'cyan';
+    st.textContent = alerts.is_scanning ? 'Scanning...' : 'Monitoring';
+  } catch (e) {
+    console.error(e);
+    st.className = '';
+    st.style.color = 'var(--neon-red)';
+    st.textContent = 'Connection Error';
+  }
+  countdown = REFRESH_MS / 1000;
+}
+
+/* ---------- render ---------- */
+function render(data, status) {
+  // stats
+  const s = data.summary;
+  document.getElementById('stTotal').textContent   = s.total_alerts;
+  document.getElementById('stWhale').textContent   = s.whale_count;
+  document.getElementById('stSpoof').textContent   = s.spoofing_count;
+  document.getElementById('stInsider').textContent = s.insider_count;
+
+  // header
+  document.getElementById('scanCount').textContent = data.scan_count;
+  if (data.last_scan_at) {
+    document.getElementById('lastUpdate').textContent =
+      new Date(data.last_scan_at).toLocaleTimeString('ja-JP');
+  }
+
+  // status bar
+  document.getElementById('statusText').textContent =
+    data.is_scanning ? 'Scanning...' : 'Monitoring';
+  document.getElementById('tickerCount').textContent = status.watchlist_count;
+  if (data.next_scan_at) {
+    document.getElementById('nextScan').textContent =
+      new Date(data.next_scan_at).toLocaleTimeString('ja-JP');
+  }
+
+  // collect alerts from tickers
+  const whales = [], spoofs = [], insiders = [];
+  for (const [, info] of Object.entries(data.tickers || {})) {
+    if (info.whale_alerts)    whales.push(...info.whale_alerts);
+    if (info.spoofing_alerts) spoofs.push(...info.spoofing_alerts);
+    if (info.insider_alerts)  insiders.push(...info.insider_alerts);
+  }
+
+  renderWhales(whales);
+  renderSpoofs(spoofs);
+  renderInsiders(insiders);
+}
+
+/* ---------- whale ---------- */
+function renderWhales(arr) {
+  const el = document.getElementById('listWhale');
+  document.getElementById('cntWhale').textContent = arr.length;
+  if (!arr.length) { el.innerHTML = '<div class="empty">No whale alerts detected</div>'; return; }
+  el.innerHTML = arr.map(a => {
+    const c = a.option_type === 'CALL';
+    const dir = c ? '&#x1F4C8; UP' : '&#x1F4C9; DOWN';
+    const r = a.ratio === null || a.ratio === Infinity ? '&infin;x' : a.ratio + 'x';
+    return `<div class="item ${c ? 'w-call' : 'w-put'}">
+      <div class="row1">
+        <span class="tkr ${c ? 'call' : 'put'}">${a.ticker}</span>
+        <span class="badge ${c ? 'b-call' : 'b-put'}">${a.option_type}</span>
+        <span style="font-size:11px">${dir}</span>
+        <span class="meta">
+          <span>$${a.strike}</span>
+          <span>Vol:${a.volume.toLocaleString()}</span>
+          <span class="hi">${r}</span>
+        </span>
+      </div>
+      <div class="sub">Exp: ${a.expiry} | OI: ${a.open_interest.toLocaleString()}</div>
+      <div class="ts">${a.detected_at || ''}</div>
+    </div>`;
+  }).join('');
+}
+
+/* ---------- spoofing ---------- */
+function renderSpoofs(arr) {
+  const el = document.getElementById('listSpoof');
+  document.getElementById('cntSpoof').textContent = arr.length;
+  if (!arr.length) { el.innerHTML = '<div class="empty">No spoofing walls detected</div>'; return; }
+  el.innerHTML = arr.map(a => {
+    const ask = a.wall_side === 'ASK';
+    const dir = ask ? '&#x26A0; ASK Wall (Sell)' : '&#x26A0; BID Wall (Buy)';
+    const warn = ask
+      ? 'Upper resistance — watch for pullback'
+      : 'Lower support — watch for breakdown';
+    return `<div class="item ${ask ? 'sp-ask' : 'sp-bid'}">
+      <div class="row1">
+        <span class="tkr sp">${a.ticker}</span>
+        <span class="badge ${ask ? 'b-ask' : 'b-bid'}">${a.wall_side}</span>
+        <span style="font-size:11px">${dir}</span>
+        <span class="meta">
+          <span>$${a.strike}</span>
+          <span>${a.wall_size.toLocaleString()} ct</span>
+          <span class="hi">${a.size_ratio}x</span>
+        </span>
+      </div>
+      <div class="sub">${a.option_type} | Exp: ${a.expiry} | ${warn}</div>
+      <div class="ts">${a.detected_at || ''}</div>
+    </div>`;
+  }).join('');
+}
+
+/* ---------- insider ---------- */
+function renderInsiders(arr) {
+  const el = document.getElementById('listInsider');
+  document.getElementById('cntInsider').textContent = arr.length;
+  if (!arr.length) { el.innerHTML = '<div class="empty">No insider buys detected</div>'; return; }
+  el.innerHTML = arr.map(a => `<div class="item ins">
+    <div class="row1">
+      <span class="tkr ins">${a.ticker}</span>
+      <span class="badge b-buy">BUY</span>
+      <span style="font-size:11px">${a.insider_name}</span>
+      <span class="meta">
+        <span>${a.relationship}</span>
+        <span>${a.value}</span>
+      </span>
+    </div>
+    <div class="sub">${a.transaction} | ${a.date} | Shares: ${a.shares}</div>
+    <div class="ts">${a.detected_at || ''}</div>
+  </div>`).join('');
+}
+
+/* ---------- countdown ---------- */
+function startCountdown() {
+  if (cdTimer) clearInterval(cdTimer);
+  cdTimer = setInterval(() => {
+    countdown = Math.max(0, countdown - 1);
+    const m = Math.floor(countdown / 60);
+    const s = countdown % 60;
+    const txt = m + ':' + String(s).padStart(2, '0');
+    document.getElementById('refreshTimer').textContent = txt;
+    document.getElementById('footerTimer').textContent  = txt;
+  }, 1000);
+}
+
+/* ---------- init ---------- */
+load();
+startCountdown();
+setInterval(load, REFRESH_MS);
+</script>
+</body>
+</html>
