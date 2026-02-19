@@ -110,8 +110,12 @@ def _env_int(key: str, default: int = 0) -> int:
 # ============================================================
 _DEFAULT_WATCHLIST = [s.strip() for s in _env("WATCHLIST", "NVDA,AMD,SMCI,PLTR,ARM,MSTR,COIN,MARA,TSLA,SOFI,RKLB,GRRR,DJT,HOOD,AAPL,AMZN,META,GOOGL,MSFT,NFLX").split(",") if s.strip()]
 
+# 永続データ保存先 (Railway Volume 等を指定可能)
+_DATA_DIR = Path(_env("DATA_DIR", "")) if _env("DATA_DIR") else Path(__file__).parent
+_DATA_DIR.mkdir(parents=True, exist_ok=True)
+
 # ウォッチリスト永続化ファイル
-_WATCHLIST_FILE = Path(__file__).parent / "watchlist.json"
+_WATCHLIST_FILE = _DATA_DIR / "watchlist.json"
 
 
 def _load_watchlist() -> list[str]:
@@ -167,7 +171,7 @@ _LIFETIME_TOKEN = _make_token(LIFETIME_PASSWORD) if LIFETIME_PASSWORD else ""
 # ============================================================
 # 買い切りパスワード使用回数管理 (入力回数ベース)
 # ============================================================
-_LIFETIME_FILE = Path(__file__).parent / "lifetime_uses.json"
+_LIFETIME_FILE = _DATA_DIR / "lifetime_uses.json"
 
 
 def _load_lifetime_count() -> int:
