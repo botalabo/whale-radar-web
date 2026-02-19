@@ -444,6 +444,15 @@
   }
   .sec-title.green { color: var(--neon-green); }
   .sec-title.red   { color: var(--neon-red); }
+  .date-tag {
+    font-size: 10px; font-weight: normal;
+    margin-left: 6px; padding: 1px 6px;
+    border-radius: 3px; vertical-align: middle;
+  }
+  .date-tag.prev {
+    background: rgba(255,165,0,0.2); color: #FFA500;
+    border: 1px solid rgba(255,165,0,0.4);
+  }
 
   /* Log textbox */
   .logbox {
@@ -1078,7 +1087,7 @@
     <!-- 予測・判定履歴 -->
     <div class="pred-section">
       <div class="sec-header">
-        <div class="sec-title green">&ensp;&#x1F3AF;&ensp;クジラの予測・判定履歴 (PREDICTION RECORD)</div>
+        <div class="sec-title green">&ensp;&#x1F3AF;&ensp;クジラの予測・判定履歴 (PREDICTION RECORD)<span id="predDateTag" class="date-tag"></span></div>
         <span style="display:flex;gap:4px;">
           <button class="copy-btn green" id="copyPredBtn" onclick="copyPrediction()">&#x1F3AF; 実績コピー</button>
           <button class="copy-btn cyan" id="todayPredBtn" onclick="toggleTodayPred()">&#x1F4C5; 当日のみ</button>
@@ -1091,7 +1100,7 @@
     <!-- WHALE ALERT 履歴 -->
     <div class="alert-section">
       <div class="sec-header">
-        <div class="sec-title red">&ensp;&#x1F6A8;&ensp;WHALE ALERT 履歴</div>
+        <div class="sec-title red">&ensp;&#x1F6A8;&ensp;WHALE ALERT 履歴<span id="alertDateTag" class="date-tag"></span></div>
         <span style="display:flex;gap:4px;">
           <button class="copy-btn cyan" id="copyAlertBtn" onclick="copyAlertHistory()">&#x1F4CB; 履歴コピー</button>
           <button class="copy-btn cyan" id="todayAlertBtn" onclick="toggleTodayAlert()">&#x1F4C5; 当日のみ</button>
@@ -1624,6 +1633,23 @@ function renderPredBox(tickers, marketOpen, marketStatus) {
     }
   }
 
+  // 前日データがあるか判定してタグ表示
+  const predTag = document.getElementById('predDateTag');
+  const predDates = new Set();
+  for (const info of Object.values(tickers)) {
+    if (info.whale_alerts) {
+      for (const a of info.whale_alerts) { if (a.detected_date) predDates.add(a.detected_date); }
+    }
+  }
+  const hasPrevPred = [...predDates].some(d => d !== today);
+  if (hasPrevPred && !filterTodayPred) {
+    predTag.className = 'date-tag prev';
+    predTag.textContent = '\u524D\u65E5\u5206\u3092\u542B\u3080';
+  } else {
+    predTag.className = 'date-tag';
+    predTag.textContent = '';
+  }
+
   if (!html) {
     html = '<div class="ll c-dim">\u{23F3} \u30BB\u30F3\u30C1\u30E1\u30F3\u30C8\u89E3\u6790\u5F85\u6A5F\u4E2D...</div>';
   }
@@ -1685,6 +1711,23 @@ function renderAlertBox(tickers) {
 
   if (!html) {
     html = '<div class="ll c-dim">\u{23F3} \u30A2\u30E9\u30FC\u30C8\u5F85\u6A5F\u4E2D...</div>';
+  }
+
+  // 前日データがあるか判定してタグ表示
+  const alertTag = document.getElementById('alertDateTag');
+  const alertDates = new Set();
+  for (const info of Object.values(tickers)) {
+    for (const arr of [info.whale_alerts||[], info.spoofing_alerts||[], info.insider_alerts||[]]) {
+      for (const a of arr) { if (a.detected_date) alertDates.add(a.detected_date); }
+    }
+  }
+  const hasPrevAlert = [...alertDates].some(d => d !== today);
+  if (hasPrevAlert && !filterTodayAlert) {
+    alertTag.className = 'date-tag prev';
+    alertTag.textContent = '\u524D\u65E5\u5206\u3092\u542B\u3080';
+  } else {
+    alertTag.className = 'date-tag';
+    alertTag.textContent = '';
   }
 
   const wasAtBottom = box.scrollTop + box.clientHeight >= box.scrollHeight - 5;
