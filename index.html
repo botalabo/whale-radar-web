@@ -1950,18 +1950,31 @@ async function initGate() {
       const data = await res.json();
       if (data.valid) {
         gateUnlocked = true;
+        localStorage.removeItem('wr_gate_start');
         return;  // 認証済み → ゲート不要
       }
     } catch (_) {}
     sessionStorage.removeItem('wr_token');
   }
 
-  // 未認証 → 1分後にゲート表示
-  startGateCountdown();
+  // localStorage に初回アクセス時刻を記録 (リロードしてもリセットされない)
+  let gateStart = parseInt(localStorage.getItem('wr_gate_start') || '0', 10);
+  if (!gateStart) {
+    gateStart = Date.now();
+    localStorage.setItem('wr_gate_start', String(gateStart));
+  }
+
+  const elapsed = Math.floor((Date.now() - gateStart) / 1000);
+  if (elapsed >= GATE_DELAY_SEC) {
+    // 既に1分経過 → 即ロック
+    showGate();
+  } else {
+    // 残り時間からカウントダウン
+    startGateCountdown(GATE_DELAY_SEC - elapsed);
+  }
 }
 
-function startGateCountdown() {
-  let remaining = GATE_DELAY_SEC;
+function startGateCountdown(remaining) {
   gateTimer = setInterval(() => {
     remaining--;
     if (remaining <= 0) {
@@ -1997,6 +2010,7 @@ async function doGateLogin() {
     if (data.ok) {
       gateUnlocked = true;
       sessionStorage.setItem('wr_token', data.token);
+      localStorage.removeItem('wr_gate_start');
       document.getElementById('gateOverlay').classList.remove('show');
       if (gateTimer) clearInterval(gateTimer);
     } else {
