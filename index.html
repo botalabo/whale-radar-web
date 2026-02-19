@@ -567,13 +567,142 @@
     margin-top: 10px; min-height: 18px;
   }
 
-  /* ============================================ RESPONSIVE */
+  /* ============================================ RESPONSIVE — Tablet */
   @media (max-width: 900px) {
     .main-area { flex-direction: column; }
     .left-panel { width: 100%; min-width: 100%; max-height: 260px; }
     .price-grid { grid-template-columns: 1fr 1fr 1fr; }
     .header-sub { display: none; }
     .header-title { font-size: 16px; letter-spacing: 1px; }
+  }
+
+  /* ============================================ RESPONSIVE — Mobile */
+  @media (max-width: 600px) {
+    body {
+      height: auto;
+      min-height: 100vh;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* Marquee — compact */
+    .marquee-row { height: 28px; }
+    .marquee-track { font-size: 11px; }
+
+    /* Header — compact */
+    .header {
+      height: 50px; min-height: 50px;
+      padding: 0 10px;
+    }
+    .header-title { font-size: 13px; letter-spacing: 1px; }
+    .live-label { font-size: 11px; margin-left: 6px; }
+    .header-sub { display: none; }
+    .header-clock { font-size: 11px; }
+
+    /* Main — vertical stack, allow scroll */
+    .main-area {
+      flex-direction: column;
+      padding: 4px 5px; gap: 5px;
+      flex: none;
+      overflow: visible;
+    }
+
+    /* Left panel — compact, no fixed height */
+    .left-panel {
+      width: 100%; min-width: 100%;
+      flex-shrink: 0;
+      max-height: none;
+    }
+    .status-ind { font-size: 10px; padding: 5px 0 3px; }
+    .progress-box { margin: 0 6px 3px; padding: 3px 6px; }
+    .progress-row { font-size: 10px; }
+    .pbar-wrap { height: 7px; }
+    .pbar-pct { font-size: 8px; }
+    .price-hdr { font-size: 9px; padding: 2px 0; }
+    .price-grid-wrap {
+      flex: none;
+      max-height: 140px;
+      margin: 0 6px;
+      padding: 2px;
+    }
+    .price-grid { grid-template-columns: 1fr 1fr 1fr; gap: 0; }
+    .price-cell { padding: 2px 4px; }
+    .price-sym { font-size: 10px; }
+    .price-val { font-size: 9px; }
+    .action-box { margin: 3px 6px 4px; padding: 4px 6px; }
+    .action-hdr { font-size: 8px; }
+    .sum-row { font-size: 9px; }
+    .scan-info { font-size: 8px; margin: 1px 6px 4px; }
+
+    /* Right panel — stack sections */
+    .right-panel {
+      flex: none;
+      min-height: 0;
+      overflow: visible;
+    }
+
+    /* Sections — fixed heights for mobile scroll */
+    .pred-section { padding: 5px 5px 3px; flex: none; }
+    .alert-section { padding: 3px 5px 5px; flex: none; }
+
+    .sec-title { font-size: 11px; }
+    .sec-header { padding-bottom: 2px; }
+
+    /* Logbox — scrollable with fixed height */
+    .logbox {
+      flex: none;
+      height: 200px;
+      min-height: 100px;
+      font-size: 11px;
+      line-height: 1.45;
+      padding: 4px 5px;
+    }
+
+    /* Bold variants — smaller on mobile */
+    .b-red, .b-green, .b-cyan, .b-yellow, .b-orange, .b-fire {
+      font-size: 12px;
+    }
+    .ll .ts { font-size: 10px; }
+
+    /* Copy buttons */
+    .copy-btn { font-size: 9px; padding: 2px 6px; }
+
+    /* Disclaimer */
+    .disclaimer { font-size: 9px; padding: 3px 5px; margin-top: 3px; }
+
+    /* Status bar */
+    .status-bar {
+      height: 26px; min-height: 26px;
+      font-size: 9px; padding: 0 6px;
+    }
+    .sb-right { display: none; }
+
+    /* Gate overlay — mobile friendly */
+    .gate-box { padding: 24px 20px; }
+    .gate-box .logo { font-size: 40px; }
+    .gate-box h2 { font-size: 16px; letter-spacing: 1px; }
+    .gate-box .edition { font-size: 10px; margin-bottom: 14px; }
+    .gate-promo { padding: 10px 12px; }
+    .gate-promo .promo-title { font-size: 12px; }
+    .gate-promo .promo-body { font-size: 11px; }
+    .gate-box input { font-size: 13px; padding: 10px 12px; }
+    .gate-box button { font-size: 13px; padding: 10px; }
+
+    /* Modal — full screen on mobile */
+    .modal-box {
+      width: 100vw; max-width: 100vw;
+      max-height: 100vh;
+      border-radius: 0;
+      border: none;
+      border-top: 2px solid var(--neon-cyan);
+    }
+    .modal-header { padding: 10px 12px; }
+    .modal-ticker { font-size: 18px; }
+    .modal-price { font-size: 12px; }
+    .modal-summary { padding: 8px 12px; font-size: 11px; gap: 8px; }
+    .modal-tabs { padding: 8px 12px 0; }
+    .modal-tab { font-size: 11px; padding: 5px 12px; }
+    .modal-content { padding: 8px 12px 12px; font-size: 11px; line-height: 1.5; }
   }
 </style>
 </head>
