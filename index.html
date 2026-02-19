@@ -1023,6 +1023,7 @@
   <span class="live-label" id="liveLabel">&#x25CF; LIVE</span>
   <span class="header-sub">WEB EDITION</span>
   <div class="header-right">
+    <button class="bgm-btn off" id="alarmBtn" onclick="toggleAlarm()">&#x1F515; ALARM OFF</button>
     <button class="bgm-btn off" id="bgmBtn" onclick="toggleBGM()">&#x1F507; BGM OFF</button>
     <span class="header-clock" id="clock">&#x1F550; ----/--/-- --:--:--</span>
   </div>
@@ -1241,6 +1242,71 @@ function updateBGMBtn() {
     btn.textContent = '\u{1F507} BGM OFF';
     btn.className = 'bgm-btn off';
   }
+}
+
+/* ---------- Alert alarm ---------- */
+let alarmEnabled = false;
+let prevAlertTotal = -1;  // -1 = 未初期化
+
+function initAlarm() {
+  const saved = localStorage.getItem('wr_alarm');
+  if (saved === 'on') {
+    alarmEnabled = true;
+    updateAlarmBtn();
+  }
+}
+
+function toggleAlarm() {
+  alarmEnabled = !alarmEnabled;
+  localStorage.setItem('wr_alarm', alarmEnabled ? 'on' : 'off');
+  updateAlarmBtn();
+  if (alarmEnabled) {
+    // AudioContext の初期化 (autoplay 制限回避)
+    playAlertBeep(true);
+  }
+}
+
+function updateAlarmBtn() {
+  const btn = document.getElementById('alarmBtn');
+  if (alarmEnabled) {
+    btn.textContent = '\u{1F514} ALARM ON';
+    btn.className = 'bgm-btn on';
+  } else {
+    btn.textContent = '\u{1F515} ALARM OFF';
+    btn.className = 'bgm-btn off';
+  }
+}
+
+function playAlertBeep(silent) {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const now = ctx.currentTime;
+    const vol = silent ? 0.001 : 0.10;
+
+    // Tone 1 — C5
+    const osc1 = ctx.createOscillator();
+    const gain1 = ctx.createGain();
+    osc1.type = 'sine';
+    osc1.connect(gain1);
+    gain1.connect(ctx.destination);
+    osc1.frequency.value = 523.25;
+    gain1.gain.setValueAtTime(vol, now);
+    gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+    osc1.start(now);
+    osc1.stop(now + 0.2);
+
+    // Tone 2 — E5
+    const osc2 = ctx.createOscillator();
+    const gain2 = ctx.createGain();
+    osc2.type = 'sine';
+    osc2.connect(gain2);
+    gain2.connect(ctx.destination);
+    osc2.frequency.value = 659.25;
+    gain2.gain.setValueAtTime(vol, now + 0.22);
+    gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+    osc2.start(now + 0.22);
+    osc2.stop(now + 0.45);
+  } catch(e) {}
 }
 
 /* ---------- Ticker config (add / remove via server API) ---------- */
@@ -1569,18 +1635,15 @@ function fmtInsider(a) {
 /* ============================================================
    Render prediction box (sentiment + judgment)
    ============================================================ */
-function renderPredBox(tickers, marketOpen, marketStatus) {
+function renderPredBox(tickers, marketOpen, marketStatus, scanTS) {
   const box = document.getElementById('predBox');
   let html = '';
-  const ts = nowTS();
+  const ts = scanTS || nowTS();
 
-  // Market closed — show status instead of predictions
+  // Market closed — show status note (but still display predictions below)
   if (marketOpen === false) {
-    html = '<div class="ll b-yellow" style="text-align:center;padding:10px 0;">' +
-      '\u{1F3DB}\uFE0F ' + (marketStatus || 'MARKET CLOSED') + '</div>' +
-      '<div class="ll c-dim" style="text-align:center;">\u5E02\u5834\u30AF\u30ED\u30FC\u30BA\u4E2D\u306E\u305F\u3081\u4E88\u60F3\u5224\u5B9A\u306F\u4F11\u6B62\u3057\u3066\u3044\u307E\u3059</div>';
-    box.innerHTML = html;
-    return;
+    html += '<div class="ll b-yellow" style="text-align:center;padding:4px 0;">' +
+      '\u{1F3DB}\uFE0F ' + (marketStatus || 'MARKET CLOSED') + '</div>';
   }
 
   // Evaluate previous predictions
@@ -2011,12 +2074,13 @@ async function clearHistory() {
   }
 }
 
+let sbFeedbackActive = false;
 function showSbFeedback(msg) {
   const el = document.getElementById('sbLeft');
-  const prev = el.textContent;
+  sbFeedbackActive = true;
   el.textContent = '  ' + msg;
   el.style.color = 'var(--neon-green)';
-  setTimeout(() => { el.textContent = prev; el.style.color = ''; }, 3000);
+  setTimeout(() => { sbFeedbackActive = false; el.style.color = ''; }, 3000);
 }
 
 /* ============================================================
@@ -2164,6 +2228,11 @@ document.getElementById('gatePass').addEventListener('keydown', function(e) {
    Main fetch + render
    ============================================================ */
 let isScanning = false;
+let nextScanTime = null;
+let scanIntervalSec = 300;
+let sbNextStr = '--:--:--';
+let sbMktTag = '';
+let sbScanCnt = 0;
 
 async function poll() {
   try {
@@ -2217,6 +2286,10 @@ function render(data, status) {
     ind.className = 'status-ind off';
   }
 
+  /* Countdown globals */
+  if (data.next_scan_at) nextScanTime = new Date(data.next_scan_at);
+  if (status.scan_interval_sec) scanIntervalSec = status.scan_interval_sec;
+
   /* Progress — show per-ticker progress */
   const pt = document.getElementById('progText');
   const pb = document.getElementById('pbar');
@@ -2234,9 +2307,7 @@ function render(data, status) {
     pb.style.width = '5%';
     pp.textContent = '';
   } else if (data.scan_count > 0) {
-    pt.textContent = '\u30B9\u30AD\u30E3\u30F3 #' + data.scan_count + ' \u5B8C\u4E86';
-    pb.style.width = '100%';
-    pp.textContent = '100 %';
+    updateCountdown();  // カウントダウン表示
   } else {
     pt.textContent = '\u5F85\u6A5F\u4E2D...';
     pb.style.width = '0%';
@@ -2257,8 +2328,25 @@ function render(data, status) {
   document.getElementById('scanCnt').textContent  = data.scan_count;
   document.getElementById('alertCnt').textContent = totalAlertCount;
 
+  /* Alarm — 新規アラート検出時にビープ音 */
+  if (alarmEnabled && prevAlertTotal >= 0 && totalAlertCount > prevAlertTotal) {
+    playAlertBeep(false);
+  }
+  prevAlertTotal = totalAlertCount;
+
+  /* Scan timestamp for prediction display (use server scan time, not client now) */
+  let scanTS = nowTS();
+  if (data.last_scan_at) {
+    const d = new Date(data.last_scan_at);
+    if (!isNaN(d.getTime())) {
+      scanTS = String(d.getHours()).padStart(2,'0') + ':' +
+               String(d.getMinutes()).padStart(2,'0') + ':' +
+               String(d.getSeconds()).padStart(2,'0');
+    }
+  }
+
   /* Prediction box */
-  if (data.tickers) renderPredBox(data.tickers, mktOpen, mktStatus);
+  if (data.tickers) renderPredBox(data.tickers, mktOpen, mktStatus, scanTS);
 
   /* Alert history box */
   if (data.tickers) renderAlertBox(data.tickers);
@@ -2269,14 +2357,59 @@ function render(data, status) {
   /* Alert marquee */
   if (data.tickers) updateMarquee(data.tickers);
 
-  /* Status bar */
-  const last = data.last_scan_at ? new Date(data.last_scan_at).toLocaleTimeString('ja-JP') : '--:--:--';
-  const next = data.next_scan_at ? new Date(data.next_scan_at).toLocaleTimeString('ja-JP') : '--:--:--';
-  const mktTag = mktOpen === false ? '  |  ' + mktStatus : '  |  MARKET OPEN';
-  document.getElementById('sbLeft').textContent =
-    '  \u6B21\u56DE: ' + next + mktTag + '  |  SCANS: ' + data.scan_count;
+  /* Status bar — save for countdown updates */
+  sbNextStr = data.next_scan_at ? new Date(data.next_scan_at).toLocaleTimeString('ja-JP') : '--:--:--';
+  sbMktTag = mktOpen === false ? '  |  ' + mktStatus : '  |  MARKET OPEN';
+  sbScanCnt = data.scan_count;
+  updateStatusBar();
 
   lastScanCount = data.scan_count;
+}
+
+/* ============================================================
+   Countdown — 次回スキャンまでのカウントダウン
+   ============================================================ */
+function updateCountdown() {
+  if (isScanning || !nextScanTime) return;
+  const now = new Date();
+  const diff = Math.max(0, Math.floor((nextScanTime - now) / 1000));
+
+  const min = Math.floor(diff / 60);
+  const sec = diff % 60;
+  const countStr = min + ':' + String(sec).padStart(2, '0');
+
+  /* Progress area */
+  const pt = document.getElementById('progText');
+  const pb = document.getElementById('pbar');
+  const pp = document.getElementById('pbarPct');
+
+  if (diff > 0) {
+    pt.textContent = '\u6B21\u56DE\u30B9\u30AD\u30E3\u30F3\u307E\u3067 ' + countStr;
+    const elapsed = scanIntervalSec - diff;
+    const pct = Math.min(100, Math.round((elapsed / scanIntervalSec) * 100));
+    pb.style.width = pct + '%';
+    pp.textContent = pct + ' %';
+  } else {
+    pt.textContent = '\u30B9\u30AD\u30E3\u30F3\u6E96\u5099\u4E2D...';
+    pb.style.width = '100%';
+    pp.textContent = '';
+  }
+
+  /* Status bar も更新 */
+  updateStatusBar();
+}
+
+function updateStatusBar() {
+  if (sbFeedbackActive) return;
+  let cdStr = '';
+  if (nextScanTime && !isScanning) {
+    const d = Math.max(0, Math.floor((nextScanTime - new Date()) / 1000));
+    const m = Math.floor(d / 60);
+    const s = d % 60;
+    cdStr = ' (\u6B8B\u308A ' + m + ':' + String(s).padStart(2,'0') + ')';
+  }
+  document.getElementById('sbLeft').textContent =
+    '  \u6B21\u56DE: ' + sbNextStr + cdStr + sbMktTag + '  |  SCANS: ' + sbScanCnt;
 }
 
 /* ============================================================
@@ -2289,12 +2422,15 @@ setInterval(animatePulse, 80);
 
 setInterval(() => tickSpinner(isScanning), 100);
 
+setInterval(updateCountdown, 1000);
+
 setInterval(() => { yoyoTick('predBox'); yoyoTick('alertBox'); }, YOYO_INTERVAL);
 
 /* ============================================================
    Init — BGM初期化 → ゲート初期化 → データ取得開始
    ============================================================ */
 initBGM();
+initAlarm();
 initGate();
 poll();
 setInterval(poll, POLL_MS);

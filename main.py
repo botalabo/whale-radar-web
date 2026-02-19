@@ -59,6 +59,9 @@ US_MARKET_HOLIDAYS_2026 = {
 }
 _ALL_HOLIDAYS = US_MARKET_HOLIDAYS_2025 | US_MARKET_HOLIDAYS_2026
 
+# 日本時間 (表示用タイムスタンプ)
+_JST = ZoneInfo("Asia/Tokyo")
+
 
 def is_us_market_open() -> bool:
     """米国市場がオープン中かどうかを判定する (ET基準)。"""
@@ -320,7 +323,7 @@ def run_full_scan() -> None:
         sentiment_text = format_sentiment_jp(ticker, whale_alerts, ticker_info["price"])
 
         # --- タイムスタンプ・日本語テキスト付加 ---
-        now = datetime.datetime.now()
+        now = datetime.datetime.now(_JST)
         now_str = now.strftime("%H:%M:%S")
         now_date = now.strftime("%Y-%m-%d")
 
@@ -408,11 +411,11 @@ async def scan_loop() -> None:
 
             try:
                 await asyncio.to_thread(run_full_scan)
-                scan_state["last_scan_at"] = datetime.datetime.now().isoformat()
+                scan_state["last_scan_at"] = datetime.datetime.now(_JST).isoformat()
             except Exception as e:
                 logger.error(f"スキャン実行エラー: {e}", exc_info=True)
 
-            next_time = datetime.datetime.now() + datetime.timedelta(seconds=SCAN_INTERVAL)
+            next_time = datetime.datetime.now(_JST) + datetime.timedelta(seconds=SCAN_INTERVAL)
             scan_state["next_scan_at"] = next_time.isoformat()
             scan_state["is_scanning"] = False
 
