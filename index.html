@@ -1247,6 +1247,7 @@ function updateBGMBtn() {
 /* ---------- Alert alarm ---------- */
 let alarmEnabled = false;
 let prevAlertTotal = -1;  // -1 = 未初期化
+let audioCtx = null;
 
 function initAlarm() {
   const saved = localStorage.getItem('wr_alarm');
@@ -1256,13 +1257,26 @@ function initAlarm() {
   }
 }
 
+function getAudioCtx() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
+  return audioCtx;
+}
+
 function toggleAlarm() {
   alarmEnabled = !alarmEnabled;
   localStorage.setItem('wr_alarm', alarmEnabled ? 'on' : 'off');
   updateAlarmBtn();
   if (alarmEnabled) {
-    // AudioContext の初期化 (autoplay 制限回避)
-    playAlertBeep(true);
+    // ON にしたら確認ビープを鳴らす (AudioContext も初期化)
+    playAlertBeep();
+    showSbFeedback('\u{1F514} \u30A2\u30E9\u30FC\u30E0ON \u2014 \u65B0\u898F\u30A2\u30E9\u30FC\u30C8\u691C\u77E5\u6642\u306B\u901A\u77E5\u97F3\u304C\u9E23\u308A\u307E\u3059');
+  } else {
+    showSbFeedback('\u{1F515} \u30A2\u30E9\u30FC\u30E0OFF');
   }
 }
 
@@ -1277,11 +1291,10 @@ function updateAlarmBtn() {
   }
 }
 
-function playAlertBeep(silent) {
+function playAlertBeep() {
   try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const ctx = getAudioCtx();
     const now = ctx.currentTime;
-    const vol = silent ? 0.001 : 0.10;
 
     // Tone 1 — C5
     const osc1 = ctx.createOscillator();
@@ -1290,7 +1303,7 @@ function playAlertBeep(silent) {
     osc1.connect(gain1);
     gain1.connect(ctx.destination);
     osc1.frequency.value = 523.25;
-    gain1.gain.setValueAtTime(vol, now);
+    gain1.gain.setValueAtTime(0.12, now);
     gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
     osc1.start(now);
     osc1.stop(now + 0.2);
@@ -1302,7 +1315,7 @@ function playAlertBeep(silent) {
     osc2.connect(gain2);
     gain2.connect(ctx.destination);
     osc2.frequency.value = 659.25;
-    gain2.gain.setValueAtTime(vol, now + 0.22);
+    gain2.gain.setValueAtTime(0.12, now + 0.22);
     gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
     osc2.start(now + 0.22);
     osc2.stop(now + 0.45);
@@ -2330,7 +2343,7 @@ function render(data, status) {
 
   /* Alarm — 新規アラート検出時にビープ音 */
   if (alarmEnabled && prevAlertTotal >= 0 && totalAlertCount > prevAlertTotal) {
-    playAlertBeep(false);
+    playAlertBeep();
   }
   prevAlertTotal = totalAlertCount;
 
