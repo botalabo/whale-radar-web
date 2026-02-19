@@ -217,18 +217,16 @@ last_fingerprints: dict[str, set[str]] = {}
 # ============================================================
 
 def run_full_scan() -> None:
-    """全銘柄をスキャンして結果をグローバルステートに格納する。"""
-    global latest_tickers, latest_summary, last_fingerprints
-
-    tickers_data: dict = {}
-    cycle_whale: list[dict] = []
-    cycle_spoofing: list[dict] = []
-    cycle_insider: list[dict] = []
+    """全銘柄をスキャンして結果をグローバルステートに格納する。
+    1銘柄完了ごとに即座にAPIに反映し、フロントで順次表示される。"""
+    global last_fingerprints
 
     scan_start = time.time()
+    scan_state["scanning_progress"] = f"0/{len(WATCHLIST)}"
 
     for idx, ticker in enumerate(WATCHLIST, start=1):
         logger.info(f"  [{idx}/{len(WATCHLIST)}] {ticker} スキャン中...")
+        scan_state["scanning_progress"] = f"{idx}/{len(WATCHLIST)} ({ticker})"
         ticker_info: dict = {"price": None, "alerts": []}
 
         # --- 株価取得 ---
@@ -308,11 +306,17 @@ def run_full_scan() -> None:
         ticker_info["alert_count"] = len(ticker_all)
         ticker_info["changed"] = is_changed
 
-        tickers_data[ticker] = ticker_info
+        # --- 即座にグローバルステートに反映 (APIで即見える) ---
+        latest_tickers[ticker] = ticker_info
 
-        cycle_whale.extend(whale_alerts)
-        cycle_spoofing.extend(spoofing_alerts)
-        cycle_insider.extend(insider_alerts)
+        # サマリーもリアルタイム更新
+        w = sum(len(v.get("whale_alerts", [])) for v in latest_tickers.values())
+        s = sum(len(v.get("spoofing_alerts", [])) for v in latest_tickers.values())
+        i = sum(len(v.get("insider_alerts", [])) for v in latest_tickers.values())
+        latest_summary["whale_count"] = w
+        latest_summary["spoofing_count"] = s
+        latest_summary["insider_count"] = i
+        latest_summary["total_alerts"] = w + s + i
 
         logger.info(
             f"  {ticker}: whale={len(whale_alerts)} "
@@ -324,22 +328,18 @@ def run_full_scan() -> None:
         if idx < len(WATCHLIST):
             time.sleep(SLEEP_BETWEEN_TICKERS)
 
-    elapsed = round(time.time() - scan_start, 1)
-
-    # グローバルステート更新 (アトミックに差し替え — 途中状態をAPIに見せない)
-    latest_tickers.update(tickers_data)
+    # ウォッチリストから外された銘柄を除去
     for k in list(latest_tickers):
-        if k not in tickers_data:
+        if k not in WATCHLIST:
             latest_tickers.pop(k, None)
-    latest_summary["total_alerts"] = len(cycle_whale) + len(cycle_spoofing) + len(cycle_insider)
-    latest_summary["whale_count"] = len(cycle_whale)
-    latest_summary["spoofing_count"] = len(cycle_spoofing)
-    latest_summary["insider_count"] = len(cycle_insider)
 
+    elapsed = round(time.time() - scan_start, 1)
+    scan_state["scanning_progress"] = ""
     logger.info(
         f"  完了 ({elapsed}s) — "
-        f"whale={len(cycle_whale)} spoofing={len(cycle_spoofing)} "
-        f"insider={len(cycle_insider)}"
+        f"whale={latest_summary['whale_count']} "
+        f"spoofing={latest_summary['spoofing_count']} "
+        f"insider={latest_summary['insider_count']}"
     )
 
 
@@ -479,6 +479,7 @@ async def get_status():
     return JSONResponse(content={
         "scan_count": scan_state["scan_count"],
         "is_scanning": scan_state["is_scanning"],
+        "scanning_progress": scan_state.get("scanning_progress", ""),
         "last_scan_at": scan_state["last_scan_at"],
         "next_scan_at": scan_state["next_scan_at"],
         "watchlist_count": len(WATCHLIST),

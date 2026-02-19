@@ -2087,14 +2087,22 @@ function render(data, status) {
     ind.className = 'status-ind off';
   }
 
-  /* Progress */
+  /* Progress — show per-ticker progress */
   const pt = document.getElementById('progText');
   const pb = document.getElementById('pbar');
   const pp = document.getElementById('pbarPct');
-  if (data.is_scanning) {
-    pt.textContent = '\u30B9\u30AD\u30E3\u30F3\u4E2D...';
-    pb.style.width = '60%';
-    pp.textContent = '\u30B9\u30AD\u30E3\u30F3\u5B9F\u884C\u4E2D';
+  const prog = status.scanning_progress || '';
+  if (data.is_scanning && prog) {
+    // "3/20 (TSLA)" → extract numbers for progress bar
+    const m = prog.match(/^(\d+)\/(\d+)/);
+    const pct = m ? Math.round((parseInt(m[1]) / parseInt(m[2])) * 100) : 50;
+    pt.textContent = '\u30B9\u30AD\u30E3\u30F3\u4E2D ' + prog;
+    pb.style.width = pct + '%';
+    pp.textContent = pct + ' %';
+  } else if (data.is_scanning) {
+    pt.textContent = '\u30B9\u30AD\u30E3\u30F3\u958B\u59CB...';
+    pb.style.width = '5%';
+    pp.textContent = '';
   } else if (data.scan_count > 0) {
     pt.textContent = '\u30B9\u30AD\u30E3\u30F3 #' + data.scan_count + ' \u5B8C\u4E86';
     pb.style.width = '100%';
