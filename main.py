@@ -351,12 +351,6 @@ async def serve_dashboard():
     return FileResponse(INDEX_HTML, media_type="text/html")
 
 
-@app.get("/api/auth-required")
-async def auth_required():
-    """パスワード認証が必要かどうかを返す。"""
-    return JSONResponse(content={"required": bool(APP_PASSWORD)})
-
-
 @app.post("/api/login")
 async def login(request: Request):
     """パスワードを検証してトークンを返す。"""
@@ -367,7 +361,7 @@ async def login(request: Request):
         return JSONResponse(status_code=400, content={"ok": False, "error": "invalid request"})
 
     if not APP_PASSWORD:
-        return JSONResponse(content={"ok": True, "token": ""})
+        return JSONResponse(content={"ok": True, "token": "open"})
 
     if hmac.compare_digest(password, APP_PASSWORD):
         return JSONResponse(content={"ok": True, "token": _VALID_TOKEN})
@@ -375,11 +369,22 @@ async def login(request: Request):
     return JSONResponse(status_code=401, content={"ok": False, "error": "パスワードが違います"})
 
 
+@app.post("/api/verify")
+async def verify_token(request: Request):
+    """保存済みトークンが有効かどうかを返す。"""
+    if not APP_PASSWORD:
+        return JSONResponse(content={"valid": True})
+    try:
+        body = await request.json()
+        token = body.get("token", "")
+    except Exception:
+        return JSONResponse(content={"valid": False})
+    return JSONResponse(content={"valid": hmac.compare_digest(token, _VALID_TOKEN)})
+
+
 @app.get("/api/alerts")
-async def get_alerts(request: Request):
+async def get_alerts():
     """最新のスキャン結果をJSON返却。"""
-    if not _check_auth(request):
-        return JSONResponse(status_code=401, content={"error": "unauthorized"})
     return JSONResponse(content={
         "scan_count": scan_state["scan_count"],
         "last_scan_at": scan_state["last_scan_at"],
@@ -392,10 +397,8 @@ async def get_alerts(request: Request):
 
 
 @app.get("/api/status")
-async def get_status(request: Request):
+async def get_status():
     """スキャン状態・次回実行時刻・銘柄数を返す。"""
-    if not _check_auth(request):
-        return JSONResponse(status_code=401, content={"error": "unauthorized"})
     return JSONResponse(content={
         "scan_count": scan_state["scan_count"],
         "is_scanning": scan_state["is_scanning"],

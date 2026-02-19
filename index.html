@@ -335,53 +335,101 @@
   .sb-left  { color: var(--dim-text); }
   .sb-right { color: #333344; }
 
-  /* ============================================ LOGIN OVERLAY */
-  .login-overlay {
+  /* ============================================ GATE OVERLAY */
+  .gate-overlay {
     position: fixed; inset: 0;
     z-index: 10000;
-    background: var(--dark-bg);
+    background: rgba(10,10,15,.97);
     display: flex; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.6s ease;
   }
-  .login-overlay.hidden { display: none; }
+  .gate-overlay.show {
+    opacity: 1; pointer-events: auto;
+  }
 
-  .login-box {
+  .gate-box {
     background: var(--panel-bg);
     border: 2px solid var(--neon-cyan);
     border-radius: 16px;
-    padding: 40px;
-    width: 420px; max-width: 90vw;
+    padding: 36px 40px;
+    width: 480px; max-width: 92vw;
     text-align: center;
+    box-shadow: 0 0 60px rgba(0,229,255,.15);
   }
-  .login-box .logo { font-size: 56px; margin-bottom: 10px; }
-  .login-box h2 {
+  .gate-box .logo { font-size: 52px; margin-bottom: 8px; }
+  .gate-box h2 {
     font-size: 20px; font-weight: bold;
     color: var(--neon-green);
     text-shadow: 0 0 16px rgba(0,255,65,.4);
-    letter-spacing: 2px;
-    margin-bottom: 4px;
+    letter-spacing: 2px; margin-bottom: 4px;
   }
-  .login-box .sub {
+  .gate-box .edition {
     font-size: 11px; color: var(--dim-text);
-    margin-bottom: 24px;
+    margin-bottom: 20px;
   }
-  .login-box input {
+
+  /* note 誘導 */
+  .gate-promo {
+    background: #1A1400;
+    border: 1px solid rgba(255,230,0,.25);
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-bottom: 20px;
+    text-align: left; line-height: 1.6;
+  }
+  .gate-promo .promo-title {
+    font-size: 14px; font-weight: bold;
+    color: var(--neon-yellow);
+    margin-bottom: 6px;
+  }
+  .gate-promo .promo-body {
+    font-size: 12px; color: var(--white-text);
+  }
+  .gate-promo .promo-body .dim { color: var(--dim-text); }
+  .gate-promo a {
+    color: var(--neon-cyan);
+    text-decoration: none;
+    font-weight: bold;
+  }
+  .gate-promo a:hover {
+    text-decoration: underline;
+    text-shadow: 0 0 8px rgba(0,229,255,.4);
+  }
+  .gate-promo .member-badge {
+    display: inline-block;
+    background: rgba(0,255,65,.12);
+    border: 1px solid var(--neon-green);
+    color: var(--neon-green);
+    font-size: 11px; font-weight: bold;
+    padding: 2px 10px; border-radius: 4px;
+    margin-top: 8px;
+  }
+
+  /* countdown */
+  .gate-countdown {
+    font-size: 11px; color: var(--dim-text);
+    margin-bottom: 14px;
+  }
+  .gate-countdown .sec { color: var(--neon-orange); font-weight: bold; }
+
+  /* input */
+  .gate-box input {
     width: 100%; padding: 12px 16px;
     background: var(--card-bg);
     border: 1px solid #2A2A3A;
     border-radius: 6px;
     color: var(--white-text);
     font-family: 'Consolas', monospace;
-    font-size: 14px;
-    outline: none;
-    margin-bottom: 16px;
-    text-align: center;
+    font-size: 14px; outline: none;
+    margin-bottom: 12px; text-align: center;
   }
-  .login-box input:focus {
+  .gate-box input:focus {
     border-color: var(--neon-cyan);
     box-shadow: 0 0 8px rgba(0,229,255,.2);
   }
-  .login-box input::placeholder { color: #444; }
-  .login-box button {
+  .gate-box input::placeholder { color: #444; }
+  .gate-box button {
     width: 100%; padding: 12px;
     background: #002200;
     border: 2px solid var(--neon-green);
@@ -389,15 +437,13 @@
     color: var(--neon-green);
     font-family: 'Consolas', monospace;
     font-size: 15px; font-weight: bold;
-    cursor: pointer;
-    transition: background .2s;
+    cursor: pointer; transition: background .2s;
   }
-  .login-box button:hover { background: #003300; }
-  .login-error {
+  .gate-box button:hover { background: #003300; }
+  .gate-error {
     color: var(--neon-red);
     font-size: 12px;
-    margin-top: 12px;
-    min-height: 18px;
+    margin-top: 10px; min-height: 18px;
   }
 
   /* ============================================ RESPONSIVE */
@@ -422,15 +468,30 @@
   <div class="marquee-track" id="mq2">&#x23F3; アラート待機中...</div>
 </div>
 
-<!-- ======== LOGIN OVERLAY ======== -->
-<div class="login-overlay" id="loginOverlay">
-  <div class="login-box">
+<!-- ======== GATE OVERLAY (1分後に表示) ======== -->
+<div class="gate-overlay" id="gateOverlay">
+  <div class="gate-box">
     <div class="logo">&#x1F40B;</div>
     <h2>BOTALAB WHALE RADAR</h2>
-    <div class="sub">Anti-Spoofing WEB EDITION</div>
-    <input type="password" id="loginPass" placeholder="&#x1F512; パスワードを入力" autocomplete="off">
-    <button id="loginBtn" onclick="doLogin()">&#x25B6;&ensp;ログイン</button>
-    <div class="login-error" id="loginErr"></div>
+    <div class="edition">Anti-Spoofing WEB EDITION</div>
+
+    <div class="gate-promo">
+      <div class="promo-title">&#x1F525; ボタラボ note メンバーシップ</div>
+      <div class="promo-body">
+        クジラ・異常板・インサイダーの検知データを<br>
+        24時間リアルタイムで閲覧できます。<br>
+        大口の動向の詳細解説や銘柄分析も配信中。<br><br>
+        &#x1F449; <a href="https://note.com/bota_labo_note" target="_blank" rel="noopener">ボタラボ note を見る</a><br>
+        <span class="dim">メンバーシップ会員はパスワードでいつでも閲覧可能です。</span><br>
+        <span class="member-badge">&#x2705; メンバーシップ会員 → パスワード入力で常時閲覧OK</span>
+      </div>
+    </div>
+
+    <div class="gate-countdown" id="gateCountdown"></div>
+
+    <input type="password" id="gatePass" placeholder="&#x1F512; メンバー限定パスワード" autocomplete="off">
+    <button onclick="doGateLogin()">&#x25B6;&ensp;ログイン</button>
+    <div class="gate-error" id="gateErr"></div>
   </div>
 </div>
 
@@ -526,8 +587,10 @@
 const API = window.location.origin;
 const POLL_MS = 8000;   // 8秒ポーリング
 
-/* ---------- Auth token ---------- */
-let authToken = sessionStorage.getItem('wr_token') || '';
+/* ---------- Gate (1分プレビュー → パスワード) ---------- */
+let gateUnlocked = false;
+const GATE_DELAY_SEC = 60;  // 1分後にゲート表示
+let gateTimer = null;
 
 /* ---------- Spinner (desktop と同じ Braille) ---------- */
 const SP = ['\u28CB','\u2819','\u2839','\u2838','\u283C','\u2834','\u2826','\u2827','\u2807','\u280F'];
@@ -899,48 +962,58 @@ function updateMarquee(tickers) {
 }
 
 /* ============================================================
-   Auth — ログイン処理
+   Gate — 1分プレビュー → パスワード必須
    ============================================================ */
-function authHeaders() {
-  if (!authToken) return {};
-  return { 'Authorization': 'Bearer ' + authToken };
-}
 
-async function checkAuthRequired() {
-  try {
-    const res = await fetch(API + '/api/auth-required');
-    const data = await res.json();
-    if (!data.required) {
-      // パスワード不要 → ログイン画面を非表示
-      document.getElementById('loginOverlay').classList.add('hidden');
-      return;
-    }
-    // トークンが既にあるなら検証
-    if (authToken) {
-      const test = await fetch(API + '/api/status', { headers: authHeaders() });
-      if (test.ok) {
-        document.getElementById('loginOverlay').classList.add('hidden');
-        return;
+async function initGate() {
+  // sessionStorage にトークンがあれば検証
+  const saved = sessionStorage.getItem('wr_token');
+  if (saved) {
+    try {
+      const res = await fetch(API + '/api/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: saved }),
+      });
+      const data = await res.json();
+      if (data.valid) {
+        gateUnlocked = true;
+        return;  // 認証済み → ゲート不要
       }
-      // トークン無効 → クリアして再ログイン
-      authToken = '';
-      sessionStorage.removeItem('wr_token');
-    }
-    // ログイン画面を表示
-    document.getElementById('loginOverlay').classList.remove('hidden');
-    document.getElementById('loginPass').focus();
-  } catch (e) {
-    // サーバー接続エラー → とりあえずログイン画面非表示
-    document.getElementById('loginOverlay').classList.add('hidden');
+    } catch (_) {}
+    sessionStorage.removeItem('wr_token');
   }
+
+  // 未認証 → 1分後にゲート表示
+  startGateCountdown();
 }
 
-async function doLogin() {
-  const pass = document.getElementById('loginPass').value;
-  const errEl = document.getElementById('loginErr');
+function startGateCountdown() {
+  let remaining = GATE_DELAY_SEC;
+  gateTimer = setInterval(() => {
+    remaining--;
+    if (remaining <= 0) {
+      clearInterval(gateTimer);
+      showGate();
+    }
+  }, 1000);
+}
+
+function showGate() {
+  if (gateUnlocked) return;
+  document.getElementById('gateOverlay').classList.add('show');
+  document.getElementById('gatePass').focus();
+}
+
+async function doGateLogin() {
+  const pass = document.getElementById('gatePass').value;
+  const errEl = document.getElementById('gateErr');
   errEl.textContent = '';
 
-  if (!pass) { errEl.textContent = '\u30D1\u30B9\u30EF\u30FC\u30C9\u3092\u5165\u529B\u3057\u3066\u304F\u3060\u3055\u3044'; return; }
+  if (!pass) {
+    errEl.textContent = '\u30D1\u30B9\u30EF\u30FC\u30C9\u3092\u5165\u529B\u3057\u3066\u304F\u3060\u3055\u3044';
+    return;
+  }
 
   try {
     const res = await fetch(API + '/api/login', {
@@ -950,14 +1023,14 @@ async function doLogin() {
     });
     const data = await res.json();
     if (data.ok) {
-      authToken = data.token || '';
-      sessionStorage.setItem('wr_token', authToken);
-      document.getElementById('loginOverlay').classList.add('hidden');
-      poll();  // ログイン成功 → 即データ取得
+      gateUnlocked = true;
+      sessionStorage.setItem('wr_token', data.token);
+      document.getElementById('gateOverlay').classList.remove('show');
+      if (gateTimer) clearInterval(gateTimer);
     } else {
-      errEl.textContent = data.error || '\u30ED\u30B0\u30A4\u30F3\u5931\u6557';
-      document.getElementById('loginPass').value = '';
-      document.getElementById('loginPass').focus();
+      errEl.textContent = data.error || '\u30D1\u30B9\u30EF\u30FC\u30C9\u304C\u9055\u3044\u307E\u3059';
+      document.getElementById('gatePass').value = '';
+      document.getElementById('gatePass').focus();
     }
   } catch (e) {
     errEl.textContent = '\u63A5\u7D9A\u30A8\u30E9\u30FC';
@@ -965,8 +1038,8 @@ async function doLogin() {
 }
 
 // Enter キーでログイン
-document.getElementById('loginPass').addEventListener('keydown', function(e) {
-  if (e.key === 'Enter') doLogin();
+document.getElementById('gatePass').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') doGateLogin();
 });
 
 /* ============================================================
@@ -976,19 +1049,10 @@ let isScanning = false;
 
 async function poll() {
   try {
-    const hdrs = authHeaders();
     const [ar, sr] = await Promise.all([
-      fetch(API + '/api/alerts', { headers: hdrs }),
-      fetch(API + '/api/status', { headers: hdrs }),
+      fetch(API + '/api/alerts'),
+      fetch(API + '/api/status'),
     ]);
-    if (ar.status === 401 || sr.status === 401) {
-      // トークン切れ → 再ログイン
-      authToken = '';
-      sessionStorage.removeItem('wr_token');
-      document.getElementById('loginOverlay').classList.remove('hidden');
-      document.getElementById('loginPass').focus();
-      return;
-    }
     if (!ar.ok || !sr.ok) throw new Error('HTTP');
     const data = await ar.json();
     const status = await sr.json();
@@ -1087,20 +1151,11 @@ setInterval(() => tickSpinner(isScanning), 100);
 setInterval(() => { yoyoTick('predBox'); yoyoTick('alertBox'); }, YOYO_INTERVAL);
 
 /* ============================================================
-   Init — 認証チェック → データ取得開始
+   Init — ゲート初期化 → データ取得開始
    ============================================================ */
-checkAuthRequired().then(() => {
-  // ログイン済みならポーリング開始
-  if (document.getElementById('loginOverlay').classList.contains('hidden')) {
-    poll();
-  }
-});
-setInterval(() => {
-  // ログイン済みの場合のみポーリング
-  if (document.getElementById('loginOverlay').classList.contains('hidden')) {
-    poll();
-  }
-}, POLL_MS);
+initGate();
+poll();
+setInterval(poll, POLL_MS);
 </script>
 </body>
 </html>
