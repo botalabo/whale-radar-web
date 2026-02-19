@@ -12,6 +12,7 @@ import asyncio
 import datetime
 import hashlib
 import hmac
+import json
 import logging
 import os
 import secrets
@@ -107,7 +108,32 @@ def _env_int(key: str, default: int = 0) -> int:
 # ============================================================
 # 設定 (すべて .env から)
 # ============================================================
-WATCHLIST = [s.strip() for s in _env("WATCHLIST", "NVDA,AMD,SMCI,PLTR,ARM,MSTR,COIN,MARA,TSLA,SOFI,RKLB,GRRR,DJT,HOOD,AAPL,AMZN,META,GOOGL,MSFT,NFLX").split(",") if s.strip()]
+_DEFAULT_WATCHLIST = [s.strip() for s in _env("WATCHLIST", "NVDA,AMD,SMCI,PLTR,ARM,MSTR,COIN,MARA,TSLA,SOFI,RKLB,GRRR,DJT,HOOD,AAPL,AMZN,META,GOOGL,MSFT,NFLX").split(",") if s.strip()]
+
+# ウォッチリスト永続化ファイル
+_WATCHLIST_FILE = Path(__file__).parent / "watchlist.json"
+
+
+def _load_watchlist() -> list[str]:
+    """watchlist.json があればそこから読み込み、なければ .env デフォルトを使う。"""
+    if _WATCHLIST_FILE.exists():
+        try:
+            data = json.loads(_WATCHLIST_FILE.read_text(encoding="utf-8"))
+            if isinstance(data, list) and data:
+                return data
+        except Exception:
+            pass
+    return list(_DEFAULT_WATCHLIST)
+
+
+def _save_watchlist() -> None:
+    """現在の WATCHLIST を watchlist.json に保存する。"""
+    _WATCHLIST_FILE.write_text(
+        json.dumps(WATCHLIST, ensure_ascii=False), encoding="utf-8"
+    )
+
+
+WATCHLIST: list[str] = _load_watchlist()
 OPTION_VOLUME_THRESHOLD = _env_float("OPTION_VOLUME_THRESHOLD", 3.0)
 SPOOFING_MULTIPLIER = _env_float("SPOOFING_MULTIPLIER", 10.0)
 MIN_SPOOFING_CONTRACTS = _env_int("MIN_SPOOFING_CONTRACTS", 500)
@@ -463,6 +489,48 @@ async def get_status():
         "market_open": is_us_market_open(),
         "market_status": get_market_status_text(),
     })
+
+
+@app.post("/api/watchlist/add")
+async def add_ticker(request: Request):
+    """ウォッチリストに銘柄を追加する。"""
+    try:
+        body = await request.json()
+        ticker = body.get("ticker", "").strip().upper()
+    except Exception:
+        return JSONResponse(status_code=400, content={"ok": False, "error": "invalid request"})
+
+    if not ticker or not ticker.isalpha() or len(ticker) > 10:
+        return JSONResponse(status_code=400, content={"ok": False, "error": "無効なティッカー"})
+
+    if ticker in WATCHLIST:
+        return JSONResponse(content={"ok": False, "error": f"{ticker} は既に登録されています"})
+
+    WATCHLIST.append(ticker)
+    scan_state["watchlist_count"] = len(WATCHLIST)
+    _save_watchlist()
+    logger.info(f"銘柄追加: {ticker} (合計 {len(WATCHLIST)} 銘柄)")
+    return JSONResponse(content={"ok": True, "watchlist": WATCHLIST})
+
+
+@app.post("/api/watchlist/remove")
+async def remove_ticker(request: Request):
+    """ウォッチリストから銘柄を削除する。"""
+    try:
+        body = await request.json()
+        ticker = body.get("ticker", "").strip().upper()
+    except Exception:
+        return JSONResponse(status_code=400, content={"ok": False, "error": "invalid request"})
+
+    if ticker not in WATCHLIST:
+        return JSONResponse(content={"ok": False, "error": f"{ticker} はリストにありません"})
+
+    WATCHLIST.remove(ticker)
+    scan_state["watchlist_count"] = len(WATCHLIST)
+    latest_tickers.pop(ticker, None)
+    _save_watchlist()
+    logger.info(f"銘柄削除: {ticker} (残り {len(WATCHLIST)} 銘柄)")
+    return JSONResponse(content={"ok": True, "watchlist": WATCHLIST})
 
 
 # ============================================================
