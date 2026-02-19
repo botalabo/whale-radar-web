@@ -136,6 +136,125 @@
   }
   .bgm-btn:hover { opacity: .85; }
 
+  /* ============================================ TICKER CONFIG OVERLAY */
+  .tkcfg-overlay {
+    position: fixed; inset: 0; z-index: 8500;
+    background: rgba(10,10,15,.92);
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.25s ease;
+  }
+  .tkcfg-overlay.show { opacity: 1; pointer-events: auto; }
+
+  .tkcfg-box {
+    background: var(--panel-bg);
+    border: 2px solid var(--neon-cyan);
+    border-radius: 12px;
+    width: 460px; max-width: 95vw;
+    max-height: 85vh;
+    display: flex; flex-direction: column;
+    box-shadow: 0 0 40px rgba(0,229,255,.15);
+    overflow: hidden;
+  }
+  .tkcfg-header {
+    display: flex; align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid #2A2A3A;
+  }
+  .tkcfg-header h3 {
+    font-size: 15px; font-weight: bold;
+    color: var(--neon-green);
+    margin: 0;
+  }
+  .tkcfg-close {
+    font-size: 18px; color: var(--dim-text);
+    cursor: pointer; background: none; border: none;
+    font-family: 'Consolas', monospace;
+    padding: 2px 8px; border-radius: 4px;
+  }
+  .tkcfg-close:hover { color: var(--neon-red); }
+
+  .tkcfg-hint {
+    font-size: 11px; color: var(--dim-text);
+    padding: 8px 16px 4px;
+    line-height: 1.4;
+  }
+
+  .tkcfg-grid {
+    flex: 1; min-height: 0;
+    overflow-y: auto;
+    padding: 8px 16px;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 4px 8px;
+  }
+  .tkcfg-grid::-webkit-scrollbar { width: 4px; }
+  .tkcfg-grid::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+
+  .tkcfg-item {
+    display: flex; align-items: center; gap: 6px;
+    padding: 5px 8px;
+    background: var(--card-bg);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background .15s;
+    user-select: none;
+  }
+  .tkcfg-item:hover { background: rgba(0,229,255,.06); }
+  .tkcfg-item input[type="checkbox"] {
+    accent-color: var(--neon-green);
+    width: 16px; height: 16px;
+    cursor: pointer;
+  }
+  .tkcfg-item label {
+    font-size: 13px; font-weight: bold;
+    color: var(--neon-green);
+    cursor: pointer;
+  }
+  .tkcfg-item.off label { color: var(--dim-text); }
+
+  .tkcfg-footer {
+    display: flex; align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    border-top: 1px solid #2A2A3A;
+    gap: 8px;
+  }
+  .tkcfg-footer button {
+    font-family: 'Consolas', monospace;
+    font-size: 12px; font-weight: bold;
+    padding: 6px 16px;
+    border-radius: 4px;
+    cursor: pointer; border: 1px solid;
+    transition: background .2s;
+  }
+  .tkcfg-save {
+    color: var(--dark-bg); background: var(--neon-green);
+    border-color: var(--neon-green);
+  }
+  .tkcfg-save:hover { background: #00CC33; }
+  .tkcfg-reset {
+    color: var(--dim-text); background: transparent;
+    border-color: #444;
+  }
+  .tkcfg-reset:hover { color: var(--white-text); border-color: #666; }
+
+  /* Gear button next to price header */
+  .price-hdr-wrap {
+    display: flex; align-items: center;
+    justify-content: center; gap: 6px;
+    padding: 4px 10px 2px;
+  }
+  .gear-btn {
+    font-size: 14px; cursor: pointer;
+    color: var(--dim-text);
+    background: none; border: none;
+    padding: 0 4px; transition: color .2s;
+    font-family: 'Consolas', monospace;
+  }
+  .gear-btn:hover { color: var(--neon-cyan); }
+
   /* ============================================ MAIN 2-COLUMN */
   .main-area {
     position: relative; z-index: 1;
@@ -648,6 +767,16 @@
 
     /* Price grid — 4 columns, enough height to see all tickers */
     .price-hdr { font-size: 8px; padding: 1px 0; }
+    .price-hdr-wrap { padding: 2px 4px 1px; gap: 4px; }
+    .gear-btn { font-size: 12px; }
+    .tkcfg-box { max-width: 100vw; border-radius: 0; }
+    .tkcfg-grid { grid-template-columns: 1fr 1fr; padding: 6px 10px; }
+    .tkcfg-item { padding: 4px 6px; }
+    .tkcfg-item label { font-size: 12px; }
+    .tkcfg-hint { font-size: 10px; padding: 6px 10px 2px; }
+    .tkcfg-header { padding: 10px 12px; }
+    .tkcfg-header h3 { font-size: 13px; }
+    .tkcfg-footer { padding: 8px 10px; }
     .price-grid-wrap {
       flex: none;
       max-height: 180px;
@@ -866,7 +995,10 @@
     </div>
 
     <!-- Price header -->
-    <div class="price-hdr" id="priceHdr">── LIVE PRICES (0) ──</div>
+    <div class="price-hdr-wrap">
+      <span class="price-hdr" id="priceHdr">── LIVE PRICES (0) ──</span>
+      <button class="gear-btn" onclick="openTickerConfig()" title="銘柄設定">&#x2699;</button>
+    </div>
 
     <!-- Price grid -->
     <div class="price-grid-wrap">
@@ -936,6 +1068,22 @@
       <div class="modal-tab inactive" id="tabJudge" onclick="switchTab('judge')">&#x1F3AF; 判定履歴</div>
     </div>
     <div class="modal-content" id="modalContent"></div>
+  </div>
+</div>
+
+<!-- ======== TICKER CONFIG OVERLAY ======== -->
+<div class="tkcfg-overlay" id="tkcfgOverlay" onclick="if(event.target===this)closeTickerConfig()">
+  <div class="tkcfg-box">
+    <div class="tkcfg-header">
+      <h3>&#x2699; &#x929A;&#x67C4;&#x8A2D;&#x5B9A;</h3>
+      <button class="tkcfg-close" onclick="closeTickerConfig()">&#x2715;</button>
+    </div>
+    <div class="tkcfg-hint">&#x2139;&#xFE0F; &#x8868;&#x793A;&#x3059;&#x308B;&#x929A;&#x67C4;&#x3092;&#x9078;&#x629E;&#x3057;&#x3066;&#x304F;&#x3060;&#x3055;&#x3044;&#x3002;&#x3053;&#x306E;&#x8A2D;&#x5B9A;&#x306F;&#x3053;&#x306E;&#x7AEF;&#x672B;&#x306E;&#x307F;&#x306B;&#x4FDD;&#x5B58;&#x3055;&#x308C;&#x307E;&#x3059;&#x3002;</div>
+    <div class="tkcfg-grid" id="tkcfgGrid"></div>
+    <div class="tkcfg-footer">
+      <button class="tkcfg-reset" onclick="resetTickerConfig()">&#x21BA; &#x5168;&#x3066;&#x8868;&#x793A;</button>
+      <button class="tkcfg-save" onclick="saveTickerConfig()">&#x2714; &#x4FDD;&#x5B58;</button>
+    </div>
   </div>
 </div>
 
@@ -1027,6 +1175,78 @@ function updateBGMBtn() {
     btn.className = 'bgm-btn off';
   }
 }
+
+/* ---------- Ticker config (per-device via localStorage) ---------- */
+let serverWatchlist = [];  // サーバーの全銘柄リスト
+let hiddenTickers = new Set();  // 非表示にする銘柄
+
+function loadHiddenTickers() {
+  try {
+    const saved = localStorage.getItem('wr_hidden_tickers');
+    if (saved) hiddenTickers = new Set(JSON.parse(saved));
+  } catch (_) {}
+}
+
+function saveHiddenTickers() {
+  localStorage.setItem('wr_hidden_tickers', JSON.stringify([...hiddenTickers]));
+}
+
+function getVisibleList() {
+  return serverWatchlist.filter(s => !hiddenTickers.has(s));
+}
+
+function openTickerConfig() {
+  const grid = document.getElementById('tkcfgGrid');
+  grid.innerHTML = '';
+  for (const sym of serverWatchlist) {
+    const visible = !hiddenTickers.has(sym);
+    const item = document.createElement('div');
+    item.className = 'tkcfg-item' + (visible ? '' : ' off');
+    item.innerHTML = '<input type="checkbox" id="tk_' + sym + '"' +
+      (visible ? ' checked' : '') + '><label for="tk_' + sym + '">' + sym + '</label>';
+    item.onclick = function(e) {
+      if (e.target.tagName !== 'INPUT') {
+        const cb = item.querySelector('input');
+        cb.checked = !cb.checked;
+      }
+      const cb = item.querySelector('input');
+      item.className = 'tkcfg-item' + (cb.checked ? '' : ' off');
+    };
+    grid.appendChild(item);
+  }
+  document.getElementById('tkcfgOverlay').classList.add('show');
+}
+
+function closeTickerConfig() {
+  document.getElementById('tkcfgOverlay').classList.remove('show');
+}
+
+function saveTickerConfig() {
+  hiddenTickers = new Set();
+  for (const sym of serverWatchlist) {
+    const cb = document.getElementById('tk_' + sym);
+    if (cb && !cb.checked) hiddenTickers.add(sym);
+  }
+  saveHiddenTickers();
+  // 価格グリッドを再構築
+  watchlistBuilt = false;
+  buildPrices(getVisibleList());
+  watchlistBuilt = true;
+  closeTickerConfig();
+}
+
+function resetTickerConfig() {
+  // 全チェックボックスをONに
+  for (const sym of serverWatchlist) {
+    const cb = document.getElementById('tk_' + sym);
+    if (cb) {
+      cb.checked = true;
+      cb.closest('.tkcfg-item').className = 'tkcfg-item';
+    }
+  }
+}
+
+loadHiddenTickers();
 
 /* ---------- Prediction tracking (client-side) ---------- */
 const predictions = {};   // { ticker: { direction, price, time } }
@@ -1757,9 +1977,10 @@ async function poll() {
 }
 
 function render(data, status) {
-  /* Build price grid once */
+  /* Build price grid once (filtered by per-device settings) */
   if (!watchlistBuilt && status.watchlist && status.watchlist.length) {
-    buildPrices(status.watchlist);
+    serverWatchlist = status.watchlist;
+    buildPrices(getVisibleList());
     watchlistBuilt = true;
   }
 
