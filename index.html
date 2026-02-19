@@ -75,7 +75,7 @@
     padding-left: 100%;
   }
   .marquee-row-1 .marquee-track { color: #FFFF00; }
-  .marquee-row-2 .marquee-track { color: #FFA500; }
+  .marquee-row-2 .marquee-track { color: #FFA500; animation-duration: 90s; }
   @keyframes mq-scroll {
     0%   { transform: translateX(0); }
     100% { transform: translateX(-100%); }
@@ -968,10 +968,19 @@ function fmtInsider(a) {
 /* ============================================================
    Render prediction box (sentiment + judgment)
    ============================================================ */
-function renderPredBox(tickers) {
+function renderPredBox(tickers, marketOpen, marketStatus) {
   const box = document.getElementById('predBox');
   let html = '';
   const ts = nowTS();
+
+  // Market closed — show status instead of predictions
+  if (marketOpen === false) {
+    html = '<div class="ll b-yellow" style="text-align:center;padding:10px 0;">' +
+      '\u{1F3DB}\uFE0F ' + (marketStatus || 'MARKET CLOSED') + '</div>' +
+      '<div class="ll c-dim" style="text-align:center;">\u5E02\u5834\u30AF\u30ED\u30FC\u30BA\u4E2D\u306E\u305F\u3081\u4E88\u60F3\u5224\u5B9A\u306F\u4F11\u6B62\u3057\u3066\u3044\u307E\u3059</div>';
+    box.innerHTML = html;
+    return;
+  }
 
   // Evaluate previous predictions
   for (const [sym, pred] of Object.entries(predictions)) {
@@ -1440,14 +1449,21 @@ function render(data, status) {
 
   isScanning = data.is_scanning;
 
-  /* Status indicator */
+  /* Status indicator (with market hours) */
   const ind = document.getElementById('statusInd');
+  const mktOpen = status.market_open;
+  const mktStatus = status.market_status || '';
   if (data.is_scanning) {
     ind.textContent = '\u25CF ONLINE \u2500 \u30B9\u30AD\u30E3\u30F3\u4E2D';
     ind.className = 'status-ind on';
   } else if (data.scan_count > 0) {
-    ind.textContent = '\u25CF ONLINE';
-    ind.className = 'status-ind on';
+    if (mktOpen === false) {
+      ind.textContent = '\u25CF ONLINE \u2500 ' + mktStatus;
+      ind.className = 'status-ind on';
+    } else {
+      ind.textContent = '\u25CF ONLINE';
+      ind.className = 'status-ind on';
+    }
   } else {
     ind.textContent = '\u25CF OFFLINE';
     ind.className = 'status-ind off';
@@ -1486,7 +1502,7 @@ function render(data, status) {
   document.getElementById('alertCnt').textContent = totalAlertCount;
 
   /* Prediction box */
-  if (data.tickers) renderPredBox(data.tickers);
+  if (data.tickers) renderPredBox(data.tickers, mktOpen, mktStatus);
 
   /* Alert history box */
   if (data.tickers) renderAlertBox(data.tickers);
@@ -1497,8 +1513,9 @@ function render(data, status) {
   /* Status bar */
   const last = data.last_scan_at ? new Date(data.last_scan_at).toLocaleTimeString('ja-JP') : '--:--:--';
   const next = data.next_scan_at ? new Date(data.next_scan_at).toLocaleTimeString('ja-JP') : '--:--:--';
+  const mktTag = mktOpen === false ? '  |  ' + mktStatus : '  |  MARKET OPEN';
   document.getElementById('sbLeft').textContent =
-    '  \u6B21\u56DE: ' + next + '  |  Rate-Limit: ON  |  SCANS: ' + data.scan_count;
+    '  \u6B21\u56DE: ' + next + mktTag + '  |  SCANS: ' + data.scan_count;
 
   lastScanCount = data.scan_count;
 }

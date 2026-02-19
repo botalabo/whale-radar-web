@@ -20,6 +20,8 @@ from collections import deque
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+from zoneinfo import ZoneInfo
+
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -42,6 +44,46 @@ from scanner import (
 # .env 読み込み
 # ============================================================
 load_dotenv()
+
+# ============================================================
+# 米国市場 営業時間判定 (desktop版と同じロジック)
+# ============================================================
+US_MARKET_HOLIDAYS_2025 = {
+    (1, 1), (1, 20), (2, 17), (4, 18), (5, 26),
+    (6, 19), (7, 4), (9, 1), (11, 27), (12, 25),
+}
+US_MARKET_HOLIDAYS_2026 = {
+    (1, 1), (1, 19), (2, 16), (4, 3), (5, 25),
+    (6, 19), (7, 3), (9, 7), (11, 26), (12, 25),
+}
+_ALL_HOLIDAYS = US_MARKET_HOLIDAYS_2025 | US_MARKET_HOLIDAYS_2026
+
+
+def is_us_market_open() -> bool:
+    """米国市場がオープン中かどうかを判定する (ET基準)。"""
+    et = datetime.datetime.now(ZoneInfo("America/New_York"))
+    if et.weekday() >= 5:
+        return False
+    if (et.month, et.day) in _ALL_HOLIDAYS:
+        return False
+    market_open = et.replace(hour=9, minute=30, second=0, microsecond=0)
+    market_close = et.replace(hour=16, minute=0, second=0, microsecond=0)
+    return market_open <= et <= market_close
+
+
+def get_market_status_text() -> str:
+    """現在の市場状態テキストを返す。"""
+    et = datetime.datetime.now(ZoneInfo("America/New_York"))
+    if et.weekday() >= 5:
+        return "MARKET CLOSED (Weekend / 週末休場)"
+    if (et.month, et.day) in _ALL_HOLIDAYS:
+        return "MARKET CLOSED (Holiday / 祝日休場)"
+    hour = et.hour
+    if hour < 9 or (hour == 9 and et.minute < 30):
+        return "MARKET CLOSED (Pre-Market / 開場前)"
+    if hour >= 16:
+        return "MARKET CLOSED (After Hours / 閉場後)"
+    return "MARKET OPEN"
 
 
 def _env(key: str, default: str = "") -> str:
@@ -409,6 +451,8 @@ async def get_status():
         "scan_interval_sec": SCAN_INTERVAL,
         "history_count": len(alert_history),
         "summary": latest_summary,
+        "market_open": is_us_market_open(),
+        "market_status": get_market_status_text(),
     })
 
 
