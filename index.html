@@ -1105,6 +1105,9 @@
           <button class="copy-btn red" onclick="clearPredictions()">&#x1F5D1; 全消去</button>
         </span>
       </div>
+      <div style="padding:4px 10px;font-size:11px;color:#8888AA;line-height:1.5;border-bottom:1px solid #1E1E2E;">
+        &#x2139;&#xFE0F; 判定方法: 各スキャンで検出されたクジラのオプション取引(CALL/PUT)の出来高とOTM/ITM位置関係から上昇・下落を予測。次回スキャン時の株価と比較し、変動幅が&#xB1;0.15%以上なら<span style="color:#4ADE80;">Hit</span>/<span style="color:#F87171;">Miss</span>、未満なら<span style="color:#888;">Draw</span>と判定。
+      </div>
       <div class="logbox pred" id="predBox" onclick="openExpand('pred')"></div>
     </div>
 
