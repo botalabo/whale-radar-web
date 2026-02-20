@@ -1047,12 +1047,25 @@
   <div class="marquee-track" id="mq2">&#x23F3; アラート待機中...</div>
 </div>
 
-<!-- ======== GATE OVERLAY (1分後に表示) ======== -->
+<!-- ======== AD BLOCKER BAIT (検出用おとり要素) ======== -->
+<div id="ad-banner" class="ad-placement adsbox ad-zone" style="height:1px;width:1px;position:absolute;left:-9999px;top:-9999px;background:transparent;pointer-events:none;"></div>
+
+<!-- ======== GATE OVERLAY ======== -->
 <div class="gate-overlay" id="gateOverlay">
   <div class="gate-box">
     <div class="logo">&#x1F40B;</div>
     <h2>BOTALAB WHALE RADAR</h2>
     <div class="edition">Anti-Spoofing WEB EDITION</div>
+
+    <!-- 広告ブロッカー検出メッセージ (通常は非表示) -->
+    <div id="adblockMsg" style="display:none; background:rgba(255,60,60,0.15); border:1px solid #f44; border-radius:8px; padding:12px 16px; margin-bottom:14px; text-align:center;">
+      <div style="font-size:18px; margin-bottom:6px;">&#x1F6AB; 広告ブロッカーが検出されました</div>
+      <div style="font-size:12px; color:#ccc; line-height:1.6;">
+        当サイトの正常な動作のため、<br>
+        広告ブロッカーを無効にしてページを再読み込みしてください。<br>
+        <span style="color:#888;">メンバーシップ会員はパスワードでログイン可能です。</span>
+      </div>
+    </div>
 
     <div class="gate-promo">
       <div class="promo-title">&#x1F525; ボタラボ note メンバーシップ</div>
@@ -2348,6 +2361,31 @@ function refreshExpand() {
 }
 
 /* ============================================================
+   Ad Blocker Detection — 検出時はゲートロック
+   ============================================================ */
+let adBlockDetected = false;
+
+function detectAdBlock() {
+  const bait = document.getElementById('ad-banner');
+  // 要素が削除された or 非表示にされた → 広告ブロッカーあり
+  if (!bait || bait.offsetHeight === 0 || bait.offsetWidth === 0 ||
+      bait.offsetParent === null ||
+      getComputedStyle(bait).display === 'none' ||
+      getComputedStyle(bait).visibility === 'hidden') {
+    adBlockDetected = true;
+    return true;
+  }
+  return false;
+}
+
+function showAdBlockGate() {
+  adBlockDetected = true;
+  document.getElementById('adblockMsg').style.display = 'block';
+  document.getElementById('gateOverlay').classList.add('show');
+  document.getElementById('gatePass').focus();
+}
+
+/* ============================================================
    Gate — 100アクセスでロック (ページ読み込み単位)
    ============================================================ */
 
@@ -2371,6 +2409,13 @@ async function initGate() {
     } catch (_) {}
     localStorage.removeItem('wr_token');
   }
+
+  // 広告ブロッカー検出 (少し遅延させて確実に検出)
+  setTimeout(() => {
+    if (!gateUnlocked && detectAdBlock()) {
+      showAdBlockGate();
+    }
+  }, 1500);
 
   // 初回: ページ読み込み時にカウント加算 (?count=1)
   await checkGateAccess(true);
