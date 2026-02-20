@@ -398,19 +398,31 @@
 
   /* Action panel / summary */
   .action-box {
-    margin: 4px 10px 6px;
+    margin: 2px 10px 4px;
     background: var(--card-bg);
     border: 1px solid #2A2A3A;
-    border-radius: 4px; padding: 5px 8px;
+    border-radius: 4px; padding: 3px 6px;
   }
   .action-hdr {
-    text-align: center; font-size: 9px;
-    color: var(--dim-text); padding: 0 0 3px;
+    display: flex; justify-content: center; align-items: center; gap: 6px;
+    font-size: 8px;
+    color: var(--dim-text); padding: 0 0 2px;
   }
+  .action-hdr .sum-toggle {
+    background: none; border: 1px solid #333; border-radius: 3px;
+    color: var(--dim-text); font-size: 8px; cursor: pointer;
+    padding: 0 4px; line-height: 1.4;
+  }
+  .action-hdr .sum-toggle:hover { color: var(--neon-cyan); border-color: var(--neon-cyan); }
+  .sum-body.collapsed { display: none; }
   .sum-row {
     display: flex; justify-content: space-between;
-    font-size: 10px; padding: 1px 0;
+    font-size: 9px; padding: 0px 0;
+    cursor: pointer; border-radius: 2px;
   }
+  .sum-row:hover { background: rgba(255,255,255,.04); }
+  .sum-row.no-click { cursor: default; }
+  .sum-row.no-click:hover { background: none; }
   .sum-lbl { color: var(--dim-text); }
   .sum-val { font-weight: bold; }
   .sum-val.v-whale   { color: var(--neon-green); }
@@ -892,8 +904,8 @@
     .price-val { font-size: 8px; }
 
     /* Summary — horizontal single line */
-    .action-box { margin: 2px 4px 2px; padding: 3px 6px; }
-    .action-hdr { display: none; }
+    .action-box { margin: 2px 4px 2px; padding: 2px 6px; }
+    .action-hdr { font-size: 7px; }
     .sum-row { font-size: 8px; padding: 0; }
     .scan-info { display: none; }
 
@@ -1114,13 +1126,18 @@
     <div class="resize-v" id="resizePrice"></div>
 
     <!-- Summary -->
-    <div class="action-box">
-      <div class="action-hdr">─ ALERT SUMMARY ─</div>
-      <div class="sum-row"><span class="sum-lbl">&#x1F6A8; 大口オプション</span><span class="sum-val v-whale" id="sWhale">0</span></div>
-      <div class="sum-row"><span class="sum-lbl">&#x26A0;&#xFE0F; 異常板（壁）</span><span class="sum-val v-spoof" id="sSpoof">0</span></div>
-      <div class="sum-row"><span class="sum-lbl">&#x1F575;&#xFE0F; インサイダー</span><span class="sum-val v-insider" id="sInsider">0</span></div>
-      <div class="sum-row" style="border-top:1px solid #2A2A3A;margin-top:2px;padding-top:3px;">
-        <span class="sum-lbl">合計</span><span class="sum-val v-total" id="sTotal">0</span>
+    <div class="action-box" id="actionBox">
+      <div class="action-hdr">
+        <span>─ ALERT SUMMARY ─</span>
+        <button class="sum-toggle" id="sumToggle" onclick="toggleSummary()">&#x25BC;</button>
+      </div>
+      <div class="sum-body" id="sumBody">
+        <div class="sum-row" onclick="openSummaryDetail('whale')"><span class="sum-lbl">&#x1F6A8; 大口オプション</span><span class="sum-val v-whale" id="sWhale">0</span></div>
+        <div class="sum-row" onclick="openSummaryDetail('spoof')"><span class="sum-lbl">&#x26A0;&#xFE0F; 異常板（壁）</span><span class="sum-val v-spoof" id="sSpoof">0</span></div>
+        <div class="sum-row" onclick="openSummaryDetail('insider')"><span class="sum-lbl">&#x1F575;&#xFE0F; インサイダー</span><span class="sum-val v-insider" id="sInsider">0</span></div>
+        <div class="sum-row no-click" style="border-top:1px solid #2A2A3A;margin-top:1px;padding-top:2px;">
+          <span class="sum-lbl">合計</span><span class="sum-val v-total" id="sTotal">0</span>
+        </div>
       </div>
     </div>
 
@@ -1997,6 +2014,87 @@ function openTickerDetail(sym) {
 function closeModal() {
   document.getElementById('modalOverlay').classList.remove('show');
 }
+
+/* ---------- Summary toggle ---------- */
+function toggleSummary() {
+  const body = document.getElementById('sumBody');
+  const btn = document.getElementById('sumToggle');
+  const hidden = body.classList.toggle('collapsed');
+  btn.innerHTML = hidden ? '\u25B6' : '\u25BC';
+  localStorage.setItem('wr_sum_hidden', hidden ? '1' : '');
+}
+// 起動時に復元
+(function() {
+  if (localStorage.getItem('wr_sum_hidden') === '1') {
+    document.getElementById('sumBody').classList.add('collapsed');
+    document.getElementById('sumToggle').innerHTML = '\u25B6';
+  }
+})();
+
+/* ---------- Summary detail (全銘柄横断アラート一覧) ---------- */
+function openSummaryDetail(category) {
+  const titles = { whale: '\u{1F6A8} 大口オプション', spoof: '\u26A0\uFE0F 異常板（壁）', insider: '\u{1F575}\uFE0F インサイダー' };
+  const keys = { whale: 'whale_alerts', spoof: 'spoofing_alerts', insider: 'insider_alerts' };
+  const key = keys[category];
+  if (!key) return;
+
+  // 全銘柄からアラートを収集
+  let allAlerts = [];
+  for (const [sym, info] of Object.entries(latestTickers)) {
+    const arr = info[key] || [];
+    for (const a of arr) allAlerts.push({ ...a, _sym: sym, _info: info });
+  }
+
+  // モーダルヘッダー
+  document.getElementById('modalTicker').textContent = titles[category] || category;
+  document.getElementById('modalPrice').innerHTML =
+    '<span style="color:var(--dim-text)">' + allAlerts.length + '\u4EF6</span>';
+
+  // サマリー行を非表示
+  document.getElementById('modalSummary').innerHTML = '';
+
+  // タブを非表示
+  document.getElementById('tabAlert').style.display = 'none';
+  document.getElementById('tabJudge').style.display = 'none';
+
+  // コンテンツ描画
+  const box = document.getElementById('modalContent');
+  if (allAlerts.length === 0) {
+    box.innerHTML = '<div class="c-dim">\u691C\u51FA\u306A\u3057</div>';
+  } else {
+    let html = '';
+    for (const a of allAlerts) {
+      const curPrice = a._info.price ? a._info.price.price : null;
+      if (category === 'whale') {
+        const text = a.text_jp || fmtWhale(a);
+        html += '<div class="ml b-red">' + esc(text) + '</div>';
+        const adv = adviceText(a);
+        if (adv) html += '<div class="ml c-cyan">  ' + esc(adv) + '</div>';
+      } else if (category === 'spoof') {
+        const text = a.text_jp || fmtSpoof(a, curPrice);
+        html += '<div class="ml b-orange">' + esc(text) + '</div>';
+        const adv = adviceText(a);
+        if (adv) html += '<div class="ml c-cyan">  ' + esc(adv) + '</div>';
+      } else if (category === 'insider') {
+        const text = a.text_jp || fmtInsider(a);
+        html += '<div class="ml b-yellow">' + esc(text) + '</div>';
+        const adv = adviceText(a);
+        if (adv) html += '<div class="ml c-cyan">  ' + esc(adv) + '</div>';
+      }
+    }
+    box.innerHTML = html;
+  }
+
+  document.getElementById('modalOverlay').classList.add('show');
+}
+
+// モーダルを閉じる時にタブ表示を復元
+const _origCloseModal = closeModal;
+closeModal = function() {
+  _origCloseModal();
+  document.getElementById('tabAlert').style.display = '';
+  document.getElementById('tabJudge').style.display = '';
+};
 
 function switchTab(tab) {
   currentModalTab = tab;
