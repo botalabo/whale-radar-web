@@ -1238,10 +1238,10 @@
 const API = window.location.origin;
 const POLL_MS = 8000;   // 8秒ポーリング
 
-/* ---------- Gate (5分プレビュー → パスワード / 毎日リセット) ---------- */
+/* ---------- Gate (100アクセスでロック / 毎日リセット) ---------- */
 let gateUnlocked = false;
-const GATE_DELAY_SEC = 300;  // 5分後にゲート表示
-let gateTimer = null;
+const GATE_ACCESS_LIMIT = 100;
+let gateCheckTimer = null;
 
 /* ---------- Spinner (desktop と同じ Braille) ---------- */
 const SP = ['\u28CB','\u2819','\u2839','\u2838','\u283C','\u2834','\u2826','\u2827','\u2807','\u280F'];
@@ -2272,36 +2272,24 @@ async function initGate() {
     localStorage.removeItem('wr_token');
   }
 
-  // クライアント側でゲートタイマーを管理（リロード・デプロイに影響されない）
-  const today = new Date().toISOString().slice(0, 10);
-  const gateData = JSON.parse(localStorage.getItem('wr_gate') || '{}');
-
-  // 日付が変わったらリセット
-  if (gateData.date !== today) {
-    localStorage.setItem('wr_gate', JSON.stringify({ date: today, start: Date.now() }));
-    startGateCountdown(GATE_DELAY_SEC);
-    return;
-  }
-
-  // 経過時間を計算
-  const elapsed = Math.floor((Date.now() - gateData.start) / 1000);
-  const remaining = Math.max(0, GATE_DELAY_SEC - elapsed);
-
-  if (remaining <= 0) {
-    showGate();
-  } else {
-    startGateCountdown(remaining);
-  }
+  // ポーリングごとにサーバー側アクセスカウントをチェック
+  checkGateAccess();
+  gateCheckTimer = setInterval(checkGateAccess, POLL_MS);
 }
 
-function startGateCountdown(remaining) {
-  gateTimer = setInterval(() => {
-    remaining--;
-    if (remaining <= 0) {
-      clearInterval(gateTimer);
+async function checkGateAccess() {
+  if (gateUnlocked) {
+    if (gateCheckTimer) clearInterval(gateCheckTimer);
+    return;
+  }
+  try {
+    const res = await fetch(API + '/api/gate');
+    const data = await res.json();
+    if (data.locked) {
       showGate();
+      if (gateCheckTimer) clearInterval(gateCheckTimer);
     }
-  }, 1000);
+  } catch (_) {}
 }
 
 function showGate() {
@@ -2332,7 +2320,7 @@ async function doGateLogin() {
       // localStorage に永続保存 (再ログイン不要)
       localStorage.setItem('wr_token', data.token);
       document.getElementById('gateOverlay').classList.remove('show');
-      if (gateTimer) clearInterval(gateTimer);
+      if (gateCheckTimer) clearInterval(gateCheckTimer);
     } else {
       errEl.textContent = data.error || '\u30D1\u30B9\u30EF\u30FC\u30C9\u304C\u9055\u3044\u307E\u3059';
       document.getElementById('gatePass').value = '';

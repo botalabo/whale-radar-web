@@ -258,9 +258,9 @@ scan_state: dict = {
 # 直近50件のアラート履歴
 alert_history: deque[dict] = deque(maxlen=MAX_HISTORY)
 
-# ゲートタイマー (IPアドレス → 初回アクセス日時)
-# { "1.2.3.4": {"start": timestamp, "date": "2026-02-19"} }
-GATE_PREVIEW_SEC = 300  # 5分
+# ゲートカウンター (IPアドレス → アクセス回数)
+# { "1.2.3.4": {"count": 42, "date": "2026-02-19"} }
+GATE_ACCESS_LIMIT = _env_int("GATE_ACCESS_LIMIT", 100)  # 100アクセスでロック
 _gate_tracker: dict[str, dict] = {}
 
 # 最新スキャンの銘柄別データ
@@ -642,27 +642,28 @@ def _get_client_ip(request: Request) -> str:
 @app.get("/api/gate")
 async def gate_status(request: Request):
     """IPアドレスベースでゲート状態を返す。
-    - locked=false: プレビュー中 (remaining=残り秒数)
-    - locked=true:  5分経過、ロック済み
+    - locked=false: プレビュー中 (remaining=残りアクセス数)
+    - locked=true:  アクセス上限到達、ロック済み
     日付が変わればリセットされる。"""
     ip = _get_client_ip(request)
     today = datetime.date.today().isoformat()
-    now = time.time()
 
     entry = _gate_tracker.get(ip)
 
     # 日付が変わった or 初回 → リセット
     if not entry or entry.get("date") != today:
-        entry = {"start": now, "date": today}
+        entry = {"count": 0, "date": today}
         _gate_tracker[ip] = entry
 
-    elapsed = int(now - entry["start"])
-    remaining = max(0, GATE_PREVIEW_SEC - elapsed)
+    # アクセスカウント加算
+    entry["count"] += 1
+    remaining = max(0, GATE_ACCESS_LIMIT - entry["count"])
 
     return JSONResponse(content={
         "locked": remaining <= 0,
         "remaining": remaining,
-        "preview_sec": GATE_PREVIEW_SEC,
+        "access_limit": GATE_ACCESS_LIMIT,
+        "access_count": entry["count"],
     })
 
 
