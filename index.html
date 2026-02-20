@@ -2267,18 +2267,25 @@ async function initGate() {
     localStorage.removeItem('wr_token');
   }
 
-  // サーバーにIPベースのゲート状態を問い合わせ
-  try {
-    const res = await fetch(API + '/api/gate');
-    const gate = await res.json();
-    if (gate.locked) {
-      showGate();
-    } else {
-      startGateCountdown(gate.remaining);
-    }
-  } catch (_) {
-    // サーバーエラー時はフォールバック: 5分カウントダウン
+  // クライアント側でゲートタイマーを管理（リロード・デプロイに影響されない）
+  const today = new Date().toISOString().slice(0, 10);
+  const gateData = JSON.parse(localStorage.getItem('wr_gate') || '{}');
+
+  // 日付が変わったらリセット
+  if (gateData.date !== today) {
+    localStorage.setItem('wr_gate', JSON.stringify({ date: today, start: Date.now() }));
     startGateCountdown(GATE_DELAY_SEC);
+    return;
+  }
+
+  // 経過時間を計算
+  const elapsed = Math.floor((Date.now() - gateData.start) / 1000);
+  const remaining = Math.max(0, GATE_DELAY_SEC - elapsed);
+
+  if (remaining <= 0) {
+    showGate();
+  } else {
+    startGateCountdown(remaining);
   }
 }
 
