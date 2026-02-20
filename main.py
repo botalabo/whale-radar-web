@@ -400,13 +400,15 @@ def run_full_scan() -> None:
 async def scan_loop() -> None:
     """定期的にスキャンを実行するバックグラウンドタスク。
     どんな例外が発生しても自動復旧して監視を継続する。
-    マーケット閉場中はスキャンをスキップし、最後の結果を保持する。"""
+    起動直後は閉場中でも初回スキャン1回実行し、以降は閉場中スキップ。"""
     await asyncio.sleep(2)
+    initial_scan_done = False
 
     while True:
         try:
-            # マーケット閉場中はスキャンをスキップして結果を保持
-            if not is_us_market_open():
+            # 初回スキャンは閉場中でも実行（再起動後にデータが空にならないように）
+            # 2回目以降は閉場中スキップして結果を保持
+            if initial_scan_done and not is_us_market_open():
                 mkt_text = get_market_status_text()
                 logger.info(f"━━━━ スキャンスキップ ({mkt_text}) — 60秒後に再チェック ━━━━")
                 scan_state["is_scanning"] = False
@@ -427,6 +429,7 @@ async def scan_loop() -> None:
             next_time = datetime.datetime.now(_JST) + datetime.timedelta(seconds=SCAN_INTERVAL)
             scan_state["next_scan_at"] = next_time.isoformat()
             scan_state["is_scanning"] = False
+            initial_scan_done = True
 
             logger.info(f"━━━━ SCAN #{num} 完了 — 次回: {next_time.strftime('%H:%M:%S')} ━━━━")
             await asyncio.sleep(SCAN_INTERVAL)
