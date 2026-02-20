@@ -256,6 +256,65 @@ latest_summary: dict = {
 # 重複抑制キャッシュ
 last_fingerprints: dict[str, set[str]] = {}
 
+# ============================================================
+# スキャンデータ永続化 (デプロイ再起動でもデータ保持)
+# ============================================================
+_SCAN_DATA_FILE = _DATA_DIR / "scan_data.json"
+
+
+def _save_scan_data() -> None:
+    """スキャン結果をJSONファイルに保存する。"""
+    try:
+        data = {
+            "latest_tickers": latest_tickers,
+            "alert_history": list(alert_history),
+            "latest_summary": latest_summary,
+            "last_fingerprints": {k: list(v) for k, v in last_fingerprints.items()},
+            "scan_state": {
+                "scan_count": scan_state["scan_count"],
+                "last_scan_at": scan_state["last_scan_at"],
+            },
+        }
+        _SCAN_DATA_FILE.write_text(
+            json.dumps(data, ensure_ascii=False, default=str), encoding="utf-8"
+        )
+    except Exception as e:
+        logger.warning(f"スキャンデータ保存エラー: {e}")
+
+
+def _load_scan_data() -> None:
+    """起動時にスキャンデータを復元する。"""
+    global last_fingerprints
+    if not _SCAN_DATA_FILE.exists():
+        return
+    try:
+        data = json.loads(_SCAN_DATA_FILE.read_text(encoding="utf-8"))
+        if data.get("latest_tickers"):
+            latest_tickers.update(data["latest_tickers"])
+        if data.get("alert_history"):
+            for a in data["alert_history"]:
+                alert_history.append(a)
+        if data.get("latest_summary"):
+            latest_summary.update(data["latest_summary"])
+        if data.get("last_fingerprints"):
+            last_fingerprints = {
+                k: set(v) for k, v in data["last_fingerprints"].items()
+            }
+        if data.get("scan_state"):
+            scan_state["scan_count"] = data["scan_state"].get("scan_count", 0)
+            scan_state["last_scan_at"] = data["scan_state"].get("last_scan_at")
+        logger.info(
+            f"スキャンデータ復元: {len(latest_tickers)}銘柄, "
+            f"履歴{len(alert_history)}件, "
+            f"スキャン#{scan_state['scan_count']}"
+        )
+    except Exception as e:
+        logger.warning(f"スキャンデータ読み込みエラー: {e}")
+
+
+# 起動時に復元
+_load_scan_data()
+
 
 # ============================================================
 # スキャン実行 (1サイクル)
@@ -392,6 +451,9 @@ def run_full_scan() -> None:
         f"insider={latest_summary['insider_count']}"
     )
 
+    # スキャン結果を永続化
+    _save_scan_data()
+
 
 # ============================================================
 # バックグラウンドスキャンループ
@@ -400,14 +462,17 @@ def run_full_scan() -> None:
 async def scan_loop() -> None:
     """定期的にスキャンを実行するバックグラウンドタスク。
     どんな例外が発生しても自動復旧して監視を継続する。
-    起動直後は閉場中でも初回スキャン1回実行し、以降は閉場中スキップ。"""
+    復元データがあれば閉場中の初回スキャンもスキップ。なければ初回1回実行。"""
     await asyncio.sleep(2)
-    initial_scan_done = False
+    # 復元データがあれば初回スキャン不要
+    initial_scan_done = bool(latest_tickers)
+    if initial_scan_done:
+        logger.info(f"━━━━ 復元データあり ({len(latest_tickers)}銘柄) — 初回スキャンスキップ ━━━━")
 
     while True:
         try:
-            # 初回スキャンは閉場中でも実行（再起動後にデータが空にならないように）
-            # 2回目以降は閉場中スキップして結果を保持
+            # 復元データあり or スキャン済み → 閉場中はスキップ
+            # 復元データなし & 初回 → 閉場中でも1回実行
             if initial_scan_done and not is_us_market_open():
                 mkt_text = get_market_status_text()
                 logger.info(f"━━━━ スキャンスキップ ({mkt_text}) — 60秒後に再チェック ━━━━")
@@ -667,6 +732,7 @@ async def clear_predictions():
         latest_summary["spoofing_count"] + latest_summary["insider_count"]
     )
     logger.info("実績データをクリアしました")
+    _save_scan_data()
     return JSONResponse(content={"ok": True})
 
 
@@ -686,6 +752,7 @@ async def clear_history():
     latest_summary["total_alerts"] = 0
     last_fingerprints.clear()
     logger.info("アラート履歴をクリアしました")
+    _save_scan_data()
     return JSONResponse(content={"ok": True})
 
 
