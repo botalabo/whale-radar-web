@@ -5,6 +5,7 @@
   GET  /api/alerts  最新スキャン結果 (JSON)
   GET  /api/status  スキャン状態・次回実行時刻
   GET  /            index.html 配信
+  データ永続化: scan_data.json (Volume: /data)
 ==========================================================
 """
 
