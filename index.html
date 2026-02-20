@@ -1100,6 +1100,7 @@
       <div class="sec-header">
         <div class="sec-title green">&ensp;&#x1F3AF;&ensp;クジラの予測・判定履歴 (PREDICTION RECORD)<span id="predDateTag" class="date-tag"></span></div>
         <span style="display:flex;gap:4px;">
+          <button class="copy-btn cyan" id="pausePredBtn" onclick="yoyoTogglePause('predBox','pausePredBtn')" title="&#x30B9;&#x30AF;&#x30ED;&#x30FC;&#x30EB;&#x4E00;&#x6642;&#x505C;&#x6B62;">&#x23F8;</button>
           <button class="copy-btn green" id="copyPredBtn" onclick="copyPrediction()">&#x1F3AF; 実績コピー</button>
           <button class="copy-btn cyan" id="todayPredBtn" onclick="toggleTodayPred()">&#x1F4C5; 当日のみ</button>
           <button class="copy-btn red" onclick="clearPredictions()">&#x1F5D1; 全消去</button>
@@ -1116,6 +1117,7 @@
       <div class="sec-header">
         <div class="sec-title red">&ensp;&#x1F6A8;&ensp;WHALE ALERT 履歴<span id="alertDateTag" class="date-tag"></span></div>
         <span style="display:flex;gap:4px;">
+          <button class="copy-btn cyan" id="pauseAlertBtn" onclick="yoyoTogglePause('alertBox','pauseAlertBtn')" title="&#x30B9;&#x30AF;&#x30ED;&#x30FC;&#x30EB;&#x4E00;&#x6642;&#x505C;&#x6B62;">&#x23F8;</button>
           <button class="copy-btn cyan" id="copyAlertBtn" onclick="copyAlertHistory()">&#x1F4CB; 履歴コピー</button>
           <button class="copy-btn cyan" id="todayAlertBtn" onclick="toggleTodayAlert()">&#x1F4C5; 当日のみ</button>
           <button class="copy-btn red" onclick="clearHistory()">&#x1F5D1; 全消去</button>
@@ -1504,15 +1506,29 @@ function getYoyo(id) {
 }
 function yoyoSnap(id) {
   const s = getYoyo(id);
+  if (s.userPaused) return;
   s.snapUntil = Date.now() / 1000 + YOYO_SNAP;
   s.dir = -1;
   const el = document.getElementById(id);
   if (el) el.scrollTop = el.scrollHeight;
 }
+function yoyoTogglePause(id, btnId) {
+  const s = getYoyo(id);
+  const btn = document.getElementById(btnId);
+  if (s.userPaused) {
+    s.userPaused = false;
+    s.pauseUntil = 0;
+    if (btn) { btn.textContent = '\u23F8'; btn.title = '\u30B9\u30AF\u30ED\u30FC\u30EB\u4E00\u6642\u505C\u6B62'; btn.classList.remove('active'); }
+  } else {
+    s.userPaused = true;
+    if (btn) { btn.textContent = '\u25B6'; btn.title = '\u30B9\u30AF\u30ED\u30FC\u30EB\u518D\u958B'; btn.classList.add('active'); }
+  }
+}
 function yoyoTick(id) {
   const el = document.getElementById(id);
   if (!el) return;
   const s = getYoyo(id);
+  if (s.userPaused) return;
   const now = Date.now() / 1000;
 
   if (now < s.snapUntil) { el.scrollTop = el.scrollHeight; return; }
