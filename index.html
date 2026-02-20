@@ -1438,6 +1438,7 @@ document.getElementById('tkcfgInput').addEventListener('keydown', function(e) {
 
 /* ---------- Prediction tracking (client-side) ---------- */
 let predictions = {};   // { ticker: { direction, price, time } }
+let judgmentHistory = []; // accumulated judgment results: { ts, text, cls, date }
 let lastScanCount = -1;
 let watchlistBuilt = false;
 let filterTodayPred = false;
@@ -1658,7 +1659,7 @@ function fmtInsider(a) {
 /* ============================================================
    Render prediction box (sentiment + judgment)
    ============================================================ */
-function renderPredBox(tickers, marketOpen, marketStatus, scanTS) {
+function renderPredBox(tickers, marketOpen, marketStatus, scanTS, scanCount) {
   const box = document.getElementById('predBox');
   let html = '';
   const ts = scanTS || nowTS();
@@ -1669,33 +1670,64 @@ function renderPredBox(tickers, marketOpen, marketStatus, scanTS) {
       '\u{1F3DB}\uFE0F ' + (marketStatus || 'MARKET CLOSED') + '</div>';
   }
 
-  // Evaluate previous predictions
-  for (const [sym, pred] of Object.entries(predictions)) {
-    const info = tickers[sym];
-    if (!info || !info.price) continue;
-    const curPrice = info.price.price;
-    const change = curPrice - pred.price;
-    const changeStr = change >= 0 ? '+$' + change.toFixed(2) : '-$' + Math.abs(change).toFixed(2);
-    const dirJP = pred.direction === 'up' ? '\u4E0A\u6607' : '\u4E0B\u843D';
-    const DRAW_TH = 0.05;
+  // Evaluate previous predictions ONLY when new scan data arrives
+  // (prevents re-evaluation against same price on every poll)
+  const isNewScan = scanCount > lastScanCount && lastScanCount >= 0;
+  if (isNewScan) {
+    const DRAW_PCT = 0.0015; // 0.15% — percentage-based draw threshold
+    for (const [sym, pred] of Object.entries(predictions)) {
+      const info = tickers[sym];
+      if (!info || !info.price) continue;
+      const curPrice = info.price.price;
+      const change = curPrice - pred.price;
+      const changePct = pred.price > 0 ? (change / pred.price) * 100 : 0;
+      const changeAbs = change >= 0 ? '+$' + change.toFixed(4) : '-$' + Math.abs(change).toFixed(4);
+      const changePctStr = (changePct >= 0 ? '+' : '') + changePct.toFixed(3) + '%';
+      const changeStr = changeAbs + ' (' + changePctStr + ')';
+      const dirJP = pred.direction === 'up' ? '\u4E0A\u6607' : '\u4E0B\u843D';
+      const drawTh = pred.price * DRAW_PCT;
 
-    if (Math.abs(change) <= DRAW_TH) {
-      html += logLine(ts, '\u{1F4CA} \u3010\u5224\u5B9A\u3011 \u524D\u56DE(' + pred.time + ')\u306E ' + sym + ' ' + dirJP +
-        '\u4E88\u6E2C \u27A1\uFE0F \u{1F504} \u5F15\u304D\u5206\u3051(Draw) (\u682A\u4FA1: $' +
-        pred.price.toFixed(2) + ' \u27A1\uFE0F $' + curPrice.toFixed(2) + ' \u3010\u5909\u52D5: ' + changeStr + '\u3011)', 'c-dim');
-    } else if ((pred.direction === 'up' && change > DRAW_TH) || (pred.direction === 'down' && change < -DRAW_TH)) {
-      html += logLine(ts, '\u{1F4CA} \u3010\u5224\u5B9A\u3011 \u524D\u56DE(' + pred.time + ')\u306E ' + sym + ' ' + dirJP +
-        '\u4E88\u6E2C \u27A1\uFE0F \u2705 Hit \u{1F680} (\u682A\u4FA1: $' +
-        pred.price.toFixed(2) + ' \u27A1\uFE0F $' + curPrice.toFixed(2) + ' \u3010\u5909\u52D5: ' + changeStr + '\u3011)', 'b-green');
-    } else {
-      html += logLine(ts, '\u{1F4CA} \u3010\u5224\u5B9A\u3011 \u524D\u56DE(' + pred.time + ')\u306E ' + sym + ' ' + dirJP +
-        '\u4E88\u6E2C \u27A1\uFE0F \u274C Miss (\u682A\u4FA1: $' +
-        pred.price.toFixed(2) + ' \u27A1\uFE0F $' + curPrice.toFixed(2) + ' \u3010\u5909\u52D5: ' + changeStr + '\u3011)', 'b-red');
+      let cls, text, detail;
+      if (Math.abs(change) <= drawTh) {
+        cls = 'c-dim';
+        text = '\u{1F4CA} \u3010\u5224\u5B9A\u3011 ' + sym + ' ' + dirJP +
+          '\u4E88\u6E2C \u27A1\uFE0F \u{1F504} Draw ($' +
+          pred.price.toFixed(2) + '\u2192$' + curPrice.toFixed(2) + ' ' + changeStr + ')';
+        detail = '\u{1F449} \u5909\u52D5\u5E45' + Math.abs(changePct).toFixed(3) +
+          '%\u304C\u5224\u5B9A\u57FA\u6E96(\u00B10.15%)\u672A\u6E80\u306E\u305F\u3081\u5F15\u304D\u5206\u3051\u3002' +
+          '\u5B9F\u969B\u306E\u5024\u52D5\u304D: ' + changeAbs;
+      } else if ((pred.direction === 'up' && change > drawTh) || (pred.direction === 'down' && change < -drawTh)) {
+        cls = 'b-green';
+        text = '\u{1F4CA} \u3010\u5224\u5B9A\u3011 ' + sym + ' ' + dirJP +
+          '\u4E88\u6E2C \u27A1\uFE0F \u2705 Hit \u{1F680} ($' +
+          pred.price.toFixed(2) + '\u2192$' + curPrice.toFixed(2) + ' ' + changeStr + ')';
+        detail = '\u{1F449} ' + dirJP + '\u4E88\u6E2C\u7684\u4E2D\u3002\u4E88\u6E2C\u6642\u523B(' + pred.time +
+          ')\u304B\u3089' + changePctStr + '\u306E' +
+          (change > 0 ? '\u4E0A\u6607' : '\u4E0B\u843D') + '\u3092\u78BA\u8A8D';
+      } else {
+        cls = 'b-red';
+        text = '\u{1F4CA} \u3010\u5224\u5B9A\u3011 ' + sym + ' ' + dirJP +
+          '\u4E88\u6E2C \u27A1\uFE0F \u274C Miss ($' +
+          pred.price.toFixed(2) + '\u2192$' + curPrice.toFixed(2) + ' ' + changeStr + ')';
+        detail = '\u{1F449} ' + dirJP + '\u4E88\u6E2C\u306B\u53CD\u3057\u3066' + changePctStr + '\u306E' +
+          (change > 0 ? '\u4E0A\u6607' : '\u4E0B\u843D') + '\u3002' +
+          '\u4E88\u6E2C\u6642\u523B: ' + pred.time;
+      }
+      judgmentHistory.push({ ts, text, cls, detail, date: todayStr() });
     }
+    // Clear old predictions — new ones are saved below
+    predictions = {};
+  }
+
+  // Show accumulated judgment history with detail lines
+  const today = todayStr();
+  for (const j of judgmentHistory) {
+    if (filterTodayPred && j.date && j.date !== today) continue;
+    html += logLine(j.ts, j.text, j.cls);
+    if (j.detail) html += logLine(j.ts, '  ' + j.detail, 'c-cyan');
   }
 
   // Current sentiment for tickers with whale alerts
-  const today = todayStr();
   for (const [sym, info] of Object.entries(tickers)) {
     if (!info.whale_alerts || info.whale_alerts.length === 0) continue;
     if (filterTodayPred && info.whale_alerts[0].detected_date && info.whale_alerts[0].detected_date !== today) continue;
@@ -1703,9 +1735,6 @@ function renderPredBox(tickers, marketOpen, marketStatus, scanTS) {
     if (!text) continue;
 
     let cls = 'b-cyan';
-    if (info.sentiment === 'up') cls = 'b-cyan';
-    else if (info.sentiment === 'down') cls = 'b-cyan';
-
     const detected = info.whale_alerts[0].detected_at || ts;
     html += logLine(detected, text, cls);
 
@@ -1722,6 +1751,7 @@ function renderPredBox(tickers, marketOpen, marketStatus, scanTS) {
   // 前日データがあるか判定してタグ表示
   const predTag = document.getElementById('predDateTag');
   const predDates = new Set();
+  for (const j of judgmentHistory) { if (j.date) predDates.add(j.date); }
   for (const info of Object.values(tickers)) {
     if (info.whale_alerts) {
       for (const a of info.whale_alerts) { if (a.detected_date) predDates.add(a.detected_date); }
@@ -1974,23 +2004,29 @@ function renderModalJudge() {
   if (pred && info && info.price) {
     const curPrice = info.price.price;
     const change = curPrice - pred.price;
-    const changeStr = change >= 0 ? '+$' + change.toFixed(2) : '-$' + Math.abs(change).toFixed(2);
+    const changePct = pred.price > 0 ? (change / pred.price) * 100 : 0;
+    const changeAbs = change >= 0 ? '+$' + change.toFixed(4) : '-$' + Math.abs(change).toFixed(4);
+    const changePctStr = (changePct >= 0 ? '+' : '') + changePct.toFixed(3) + '%';
     const dirJP = pred.direction === 'up' ? '\u4E0A\u6607' : '\u4E0B\u843D';
-    const DRAW_TH = 0.05;
+    const drawTh = pred.price * 0.0015; // 0.15%
 
-    let cls, result;
-    if (Math.abs(change) <= DRAW_TH) {
+    let cls, result, detail;
+    if (Math.abs(change) <= drawTh) {
       cls = 'c-dim'; result = '\u{1F504} Draw (\u5F15\u304D\u5206\u3051)';
-    } else if ((pred.direction === 'up' && change > DRAW_TH) || (pred.direction === 'down' && change < -DRAW_TH)) {
+      detail = '\u5909\u52D5\u5E45' + Math.abs(changePct).toFixed(3) + '%\u304C\u5224\u5B9A\u57FA\u6E96(\u00B10.15%)\u672A\u6E80\u306E\u305F\u3081\u5F15\u304D\u5206\u3051';
+    } else if ((pred.direction === 'up' && change > drawTh) || (pred.direction === 'down' && change < -drawTh)) {
       cls = 'b-green'; result = '\u2705 Hit \u{1F680}';
+      detail = dirJP + '\u4E88\u6E2C\u7684\u4E2D\u3002' + changePctStr + '\u306E' + (change > 0 ? '\u4E0A\u6607' : '\u4E0B\u843D') + '\u3092\u78BA\u8A8D';
     } else {
       cls = 'b-red'; result = '\u274C Miss';
+      detail = dirJP + '\u4E88\u6E2C\u306B\u53CD\u3057\u3066' + changePctStr + '\u306E' + (change > 0 ? '\u4E0A\u6607' : '\u4E0B\u843D');
     }
 
     html += '<div class="ml ' + cls + '">\u{1F4CA} \u3010\u5224\u5B9A\u3011 ' + sym + ' ' + dirJP +
       '\u4E88\u6E2C \u27A1\uFE0F ' + result + '</div>';
     html += '<div class="ml c-white">  \u682A\u4FA1: $' + pred.price.toFixed(2) +
-      ' \u27A1\uFE0F $' + curPrice.toFixed(2) + ' \u3010\u5909\u52D5: ' + changeStr + '\u3011</div>';
+      ' \u2192 $' + curPrice.toFixed(2) + ' \u3010\u5909\u52D5: ' + changeAbs + ' (' + changePctStr + ')\u3011</div>';
+    html += '<div class="ml c-cyan">  \u{1F449} ' + esc(detail) + '</div>';
     html += '<div class="ml c-dim">  \u4E88\u6E2C\u6642\u523B: ' + pred.time + '</div>';
   }
 
@@ -2076,6 +2112,7 @@ async function clearPredictions() {
   try {
     await fetch(API + '/api/clear/predictions', { method: 'POST' });
     predictions = {};
+    judgmentHistory = [];
     document.getElementById('predBox').innerHTML =
       '<div class="ll c-dim">\u23F3 \u30BB\u30F3\u30C1\u30E1\u30F3\u30C8\u89E3\u6790\u5F85\u6A5F\u4E2D...</div>';
     showSbFeedback('\u2705 \u5B9F\u7E3E\u3092\u6D88\u53BB\u3057\u307E\u3057\u305F');
@@ -2371,7 +2408,7 @@ function render(data, status) {
   }
 
   /* Prediction box */
-  if (data.tickers) renderPredBox(data.tickers, mktOpen, mktStatus, scanTS);
+  if (data.tickers) renderPredBox(data.tickers, mktOpen, mktStatus, scanTS, data.scan_count);
 
   /* Alert history box */
   if (data.tickers) renderAlertBox(data.tickers);
