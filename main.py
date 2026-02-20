@@ -644,7 +644,8 @@ async def gate_status(request: Request):
     """IPアドレスベースでゲート状態を返す。
     - locked=false: プレビュー中 (remaining=残りアクセス数)
     - locked=true:  アクセス上限到達、ロック済み
-    日付が変わればリセットされる。"""
+    日付が変わればリセットされる。
+    ?count=1 のときだけアクセス数を加算 (ページ読み込み時のみ)。"""
     ip = _get_client_ip(request)
     today = datetime.date.today().isoformat()
 
@@ -655,8 +656,10 @@ async def gate_status(request: Request):
         entry = {"count": 0, "date": today}
         _gate_tracker[ip] = entry
 
-    # アクセスカウント加算
-    entry["count"] += 1
+    # count=1 パラメータがある場合のみカウント加算 (ページ読み込み時)
+    if request.query_params.get("count") == "1":
+        entry["count"] += 1
+
     remaining = max(0, GATE_ACCESS_LIMIT - entry["count"])
 
     return JSONResponse(content={

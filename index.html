@@ -2348,8 +2348,10 @@ function refreshExpand() {
 }
 
 /* ============================================================
-   Gate — 1分プレビュー → パスワード必須
+   Gate — 100アクセスでロック (ページ読み込み単位)
    ============================================================ */
+
+let gateCountRegistered = false;
 
 async function initGate() {
   // localStorage からトークンを検証
@@ -2370,19 +2372,24 @@ async function initGate() {
     localStorage.removeItem('wr_token');
   }
 
-  // ポーリングごとにサーバー側アクセスカウントをチェック
-  checkGateAccess();
-  gateCheckTimer = setInterval(checkGateAccess, POLL_MS);
+  // 初回: ページ読み込み時にカウント加算 (?count=1)
+  await checkGateAccess(true);
+  // 以降はカウントせずステータス確認のみ
+  gateCheckTimer = setInterval(() => checkGateAccess(false), POLL_MS);
 }
 
-async function checkGateAccess() {
+async function checkGateAccess(doCount = false) {
   if (gateUnlocked) {
     if (gateCheckTimer) clearInterval(gateCheckTimer);
     return;
   }
   try {
-    const res = await fetch(API + '/api/gate');
+    const url = doCount && !gateCountRegistered
+      ? API + '/api/gate?count=1'
+      : API + '/api/gate';
+    const res = await fetch(url);
     const data = await res.json();
+    if (doCount) gateCountRegistered = true;
     if (data.locked) {
       showGate();
       if (gateCheckTimer) clearInterval(gateCheckTimer);
