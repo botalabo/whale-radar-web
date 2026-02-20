@@ -487,6 +487,40 @@
     color: var(--white-text);
   }
 
+  /* Resize handles */
+  .resize-h {
+    width: 6px; cursor: col-resize;
+    background: transparent; flex-shrink: 0;
+    position: relative; z-index: 5;
+  }
+  .resize-h::after {
+    content: ''; position: absolute;
+    top: 50%; left: 1px; width: 3px; height: 40px;
+    transform: translateY(-50%);
+    background: #333; border-radius: 2px;
+    transition: background .2s;
+  }
+  .resize-h:hover::after, .resize-h.active::after { background: var(--neon-cyan); }
+
+  .resize-v {
+    height: 6px; cursor: row-resize;
+    background: transparent; flex-shrink: 0;
+    position: relative; z-index: 5;
+  }
+  .resize-v::after {
+    content: ''; position: absolute;
+    left: 50%; top: 1px; height: 3px; width: 40px;
+    transform: translateX(-50%);
+    background: #333; border-radius: 2px;
+    transition: background .2s;
+  }
+  .resize-v:hover::after, .resize-v.active::after { background: var(--neon-cyan); }
+
+  body.resizing-col { cursor: col-resize !important; }
+  body.resizing-col * { cursor: col-resize !important; user-select: none !important; }
+  body.resizing-row { cursor: row-resize !important; }
+  body.resizing-row * { cursor: row-resize !important; user-select: none !important; }
+
   /* Log lines */
   .ll { padding: 1px 0; border-bottom: 1px solid rgba(255,255,255,.015); }
   .ll .ts { color: var(--dim-text); font-size: 12px; }
@@ -1092,6 +1126,9 @@
     </div>
   </div>
 
+  <!-- Resize handle: left ↔ right -->
+  <div class="resize-h" id="resizeH"></div>
+
   <!-- ===== RIGHT PANEL ===== -->
   <div class="right-panel">
 
@@ -1111,6 +1148,9 @@
       </div>
       <div class="logbox pred" id="predBox" onclick="openExpand('pred')"></div>
     </div>
+
+    <!-- Resize handle: pred ↔ alert -->
+    <div class="resize-v" id="resizeV"></div>
 
     <!-- WHALE ALERT 履歴 -->
     <div class="alert-section">
@@ -2513,6 +2553,98 @@ setInterval(() => tickSpinner(isScanning), 100);
 setInterval(updateCountdown, 1000);
 
 setInterval(() => { yoyoTick('predBox'); yoyoTick('alertBox'); }, YOYO_INTERVAL);
+
+/* ============================================================
+   Resize handles — パネルのドラッグリサイズ
+   ============================================================ */
+(function() {
+  const LS_KEY = 'wr_panel_sizes';
+  function saveSizes(obj) {
+    try { localStorage.setItem(LS_KEY, JSON.stringify(obj)); } catch(_) {}
+  }
+  function loadSizes() {
+    try { return JSON.parse(localStorage.getItem(LS_KEY)) || {}; } catch(_) { return {}; }
+  }
+
+  /* --- Horizontal: left ↔ right --- */
+  const hHandle = document.getElementById('resizeH');
+  const leftPanel = document.querySelector('.left-panel');
+  const mainArea = document.querySelector('.main-area');
+
+  hHandle.addEventListener('mousedown', function(e) {
+    e.preventDefault();
+    hHandle.classList.add('active');
+    document.body.classList.add('resizing-col');
+    const startX = e.clientX;
+    const startW = leftPanel.offsetWidth;
+
+    function onMove(e) {
+      const newW = Math.max(200, Math.min(startW + (e.clientX - startX), mainArea.offsetWidth - 300));
+      leftPanel.style.width = newW + 'px';
+      leftPanel.style.minWidth = newW + 'px';
+    }
+    function onUp() {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      hHandle.classList.remove('active');
+      document.body.classList.remove('resizing-col');
+      const s = loadSizes(); s.leftW = leftPanel.offsetWidth; saveSizes(s);
+    }
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
+
+  /* --- Vertical: pred ↔ alert --- */
+  const vHandle = document.getElementById('resizeV');
+  const predSec = document.querySelector('.pred-section');
+  const alertSec = document.querySelector('.alert-section');
+  const rightPanel = document.querySelector('.right-panel');
+
+  vHandle.addEventListener('mousedown', function(e) {
+    e.preventDefault();
+    vHandle.classList.add('active');
+    document.body.classList.add('resizing-row');
+    const startY = e.clientY;
+    const startPredH = predSec.offsetHeight;
+    const startAlertH = alertSec.offsetHeight;
+    const totalH = startPredH + startAlertH;
+
+    function onMove(e) {
+      const delta = e.clientY - startY;
+      const newPredH = Math.max(80, Math.min(startPredH + delta, totalH - 80));
+      const newAlertH = totalH - newPredH;
+      predSec.style.flex = 'none';
+      alertSec.style.flex = 'none';
+      predSec.style.height = newPredH + 'px';
+      alertSec.style.height = newAlertH + 'px';
+    }
+    function onUp() {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      vHandle.classList.remove('active');
+      document.body.classList.remove('resizing-row');
+      const s = loadSizes();
+      s.predH = predSec.offsetHeight;
+      s.alertH = alertSec.offsetHeight;
+      saveSizes(s);
+    }
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
+
+  /* --- Restore saved sizes --- */
+  const saved = loadSizes();
+  if (saved.leftW) {
+    leftPanel.style.width = saved.leftW + 'px';
+    leftPanel.style.minWidth = saved.leftW + 'px';
+  }
+  if (saved.predH && saved.alertH) {
+    predSec.style.flex = 'none';
+    alertSec.style.flex = 'none';
+    predSec.style.height = saved.predH + 'px';
+    alertSec.style.height = saved.alertH + 'px';
+  }
+})();
 
 /* ============================================================
    Init — BGM初期化 → ゲート初期化 → データ取得開始
