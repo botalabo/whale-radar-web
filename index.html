@@ -2249,10 +2249,8 @@ function refreshExpand() {
    ============================================================ */
 
 async function initGate() {
-  // localStorage → sessionStorage の順でトークンを検証
-  const savedLocal = localStorage.getItem('wr_token');
-  const savedSession = sessionStorage.getItem('wr_token');
-  const saved = savedLocal || savedSession;
+  // localStorage からトークンを検証
+  const saved = localStorage.getItem('wr_token');
   if (saved) {
     try {
       const res = await fetch(API + '/api/verify', {
@@ -2267,7 +2265,6 @@ async function initGate() {
       }
     } catch (_) {}
     localStorage.removeItem('wr_token');
-    sessionStorage.removeItem('wr_token');
   }
 
   // サーバーにIPベースのゲート状態を問い合わせ
@@ -2320,12 +2317,8 @@ async function doGateLogin() {
     const data = await res.json();
     if (data.ok) {
       gateUnlocked = true;
-      if (data.lifetime) {
-        // 買い切り → localStorage に永続保存 (再ログイン不要)
-        localStorage.setItem('wr_token', data.token);
-      } else {
-        sessionStorage.setItem('wr_token', data.token);
-      }
+      // localStorage に永続保存 (再ログイン不要)
+      localStorage.setItem('wr_token', data.token);
       document.getElementById('gateOverlay').classList.remove('show');
       if (gateTimer) clearInterval(gateTimer);
     } else {

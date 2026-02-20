@@ -156,9 +156,29 @@ LIFETIME_PASSWORD = _env("LIFETIME_PASSWORD", "")
 LIFETIME_MAX_USES = _env_int("LIFETIME_MAX_USES", 2)
 
 # ============================================================
-# 認証トークン (サーバー起動ごとにシークレットを生成)
+# 認証トークン (永続シークレット — デプロイ後もトークン維持)
 # ============================================================
-_SERVER_SECRET = secrets.token_hex(32)
+_SECRET_FILE = _DATA_DIR / "server_secret.txt"
+
+
+def _load_or_create_secret() -> str:
+    """永続シークレットを読み込む。なければ生成して保存する。"""
+    if _SECRET_FILE.exists():
+        try:
+            secret = _SECRET_FILE.read_text(encoding="utf-8").strip()
+            if secret:
+                return secret
+        except Exception:
+            pass
+    secret = secrets.token_hex(32)
+    try:
+        _SECRET_FILE.write_text(secret, encoding="utf-8")
+    except Exception:
+        pass
+    return secret
+
+
+_SERVER_SECRET = _load_or_create_secret()
 
 
 def _make_token(password: str) -> str:
