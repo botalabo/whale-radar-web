@@ -1047,8 +1047,10 @@
   <div class="marquee-track" id="mq2">&#x23F3; アラート待機中...</div>
 </div>
 
-<!-- ======== AD BLOCKER BAIT (検出用おとり要素) ======== -->
+<!-- ======== AD BLOCKER BAIT (検出用おとり要素 — 複数手法) ======== -->
 <div id="ad-banner" class="ad-placement adsbox ad-zone" style="height:1px;width:1px;position:absolute;left:-9999px;top:-9999px;background:transparent;pointer-events:none;"></div>
+<ins class="adsbygoogle" id="adsbygoogle-test" style="display:block;height:1px;width:1px;position:absolute;left:-9999px;top:-9999px;" data-ad-client="ca-pub-0000000000000000" data-ad-slot="0000000000"></ins>
+<div id="carbonads" style="height:1px;width:1px;position:absolute;left:-9999px;top:-9999px;"></div>
 
 <!-- ======== GATE OVERLAY ======== -->
 <div class="gate-overlay" id="gateOverlay">
@@ -2365,17 +2367,37 @@ function refreshExpand() {
    ============================================================ */
 let adBlockDetected = false;
 
-function detectAdBlock() {
-  const bait = document.getElementById('ad-banner');
-  // 要素が削除された or 非表示にされた → 広告ブロッカーあり
-  if (!bait || bait.offsetHeight === 0 || bait.offsetWidth === 0 ||
-      bait.offsetParent === null ||
-      getComputedStyle(bait).display === 'none' ||
-      getComputedStyle(bait).visibility === 'hidden') {
-    adBlockDetected = true;
-    return true;
-  }
+function _isBaitHidden(el) {
+  if (!el) return true;
+  if (el.offsetHeight === 0 && el.offsetWidth === 0) return true;
+  try {
+    const s = getComputedStyle(el);
+    if (s.display === 'none' || s.visibility === 'hidden' || s.opacity === '0') return true;
+  } catch (_) {}
   return false;
+}
+
+function detectAdBlock() {
+  // 方法1: おとり div (ad-banner, adsbox 等)
+  if (_isBaitHidden(document.getElementById('ad-banner'))) return true;
+  // 方法2: Google AdSense ins 要素
+  if (_isBaitHidden(document.getElementById('adsbygoogle-test'))) return true;
+  // 方法3: Carbon Ads div
+  if (_isBaitHidden(document.getElementById('carbonads'))) return true;
+  return false;
+}
+
+async function detectAdBlockAsync() {
+  // 方法4: 広告系URLへの fetch がブロックされるか
+  try {
+    const r = await fetch('https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js', {
+      method: 'HEAD', mode: 'no-cors', cache: 'no-store',
+    });
+    // ネットワークエラーにならなければブロッカーなし
+    return false;
+  } catch (_) {
+    return true;  // fetch がブロックされた → 広告ブロッカーあり
+  }
 }
 
 function showAdBlockGate() {
@@ -2410,11 +2432,14 @@ async function initGate() {
     localStorage.removeItem('wr_token');
   }
 
-  // 広告ブロッカー検出 (少し遅延させて確実に検出)
-  setTimeout(() => {
-    if (!gateUnlocked && detectAdBlock()) {
-      showAdBlockGate();
-    }
+  // 広告ブロッカー検出 (DOM検出 + ネットワーク検出の2段階)
+  setTimeout(async () => {
+    if (gateUnlocked) return;
+    // 1) DOM要素ベースの検出
+    if (detectAdBlock()) { showAdBlockGate(); return; }
+    // 2) ネットワークリクエストベースの検出
+    const blocked = await detectAdBlockAsync();
+    if (!gateUnlocked && blocked) showAdBlockGate();
   }, 1500);
 
   // 初回: ページ読み込み時にカウント加算 (?count=1)
