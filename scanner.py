@@ -26,12 +26,30 @@ HEADERS = {
 # ============================================================
 
 def get_stock_price(ticker_symbol: str) -> dict | None:
-    """yfinance で現在株価・前日比を取得する。"""
+    """yfinance で現在株価・前日比を取得する。fast_info 失敗時は t.info にフォールバック。"""
     try:
         t = yf.Ticker(ticker_symbol)
-        info = t.fast_info
-        price = info.get("lastPrice", 0) or info.get("last_price", 0)
-        prev = info.get("previousClose", 0) or info.get("previous_close", 0)
+
+        # fast_info を試す
+        price = 0
+        prev = 0
+        try:
+            fi = t.fast_info
+            price = fi.get("lastPrice", 0) or fi.get("last_price", 0)
+            prev = fi.get("previousClose", 0) or fi.get("previous_close", 0)
+        except Exception:
+            pass
+
+        # fast_info で previousClose が取れなかった場合、t.info にフォールバック
+        if not prev or prev <= 0:
+            try:
+                full_info = t.info
+                if not price or price <= 0:
+                    price = full_info.get("currentPrice", 0) or full_info.get("regularMarketPrice", 0)
+                prev = full_info.get("previousClose", 0) or full_info.get("regularMarketPreviousClose", 0)
+            except Exception:
+                pass
+
         if price and prev and prev > 0:
             change = price - prev
             change_pct = (change / prev) * 100
@@ -248,56 +266,66 @@ def check_insider_trades(ticker_symbol: str) -> list[dict]:
 def get_sentiment_direction(
     whale_alerts: list[dict],
     current_price: float | None,
-) -> str | None:
+) -> dict:
     """
     株価との位置関係（OTM/ITM）を考慮して方向感を判定する。
-    Returns: "up" / "down" / None
+    常にdictを返す: direction, bull_score, bear_score, bull_pct, bear_pct。
+    ドローでもスコアを返す。
     """
-    if not whale_alerts:
-        return None
+    result = {"direction": None, "bull_score": 0, "bear_score": 0, "bull_pct": 50, "bear_pct": 50}
 
-    if current_price is None or current_price <= 0:
-        call_vol = sum(
-            a["volume"] for a in whale_alerts if a.get("option_type") == "CALL"
-        )
-        put_vol = sum(
-            a["volume"] for a in whale_alerts if a.get("option_type") == "PUT"
-        )
-        if call_vol >= put_vol * 1.5:
-            return "up"
-        elif put_vol >= call_vol * 1.5:
-            return "down"
-        return None
+    if not whale_alerts:
+        return result
 
     bull_score = 0.0
     bear_score = 0.0
 
-    for a in whale_alerts:
-        vol = a["volume"]
-        strike = a["strike"]
-        opt_type = a["option_type"]
+    if current_price is None or current_price <= 0:
+        # 価格不明時: 単純ボリューム比較
+        bull_score = sum(
+            a["volume"] for a in whale_alerts if a.get("option_type") == "CALL"
+        )
+        bear_score = sum(
+            a["volume"] for a in whale_alerts if a.get("option_type") == "PUT"
+        )
+    else:
+        # OTM重み付きスコアリング
+        for a in whale_alerts:
+            vol = a["volume"]
+            strike = a["strike"]
+            opt_type = a["option_type"]
 
-        if opt_type == "CALL":
-            if strike > current_price:
-                # OTM CALL: 上昇への強い賭け（順張り）
-                bull_score += vol * 1.5
-            else:
-                # ITM CALL: ヘッジや利確の可能性（ダマシ警戒）
-                bull_score += vol * 0.5
-        elif opt_type == "PUT":
-            if strike < current_price:
-                # OTM PUT: 下落への強い賭け（順張り）
-                bear_score += vol * 1.5
-            else:
-                # ITM PUT: ヘッジや利確の可能性（ダマシ警戒）
-                bear_score += vol * 0.5
+            if opt_type == "CALL":
+                if strike > current_price:
+                    bull_score += vol * 1.5   # OTM CALL: 上昇への強い賭け
+                else:
+                    bull_score += vol * 0.5   # ITM CALL: ヘッジ/利確の可能性
+            elif opt_type == "PUT":
+                if strike < current_price:
+                    bear_score += vol * 1.5   # OTM PUT: 下落への強い賭け
+                else:
+                    bear_score += vol * 0.5   # ITM PUT: ヘッジ/利確の可能性
 
-    if bull_score >= bear_score * 1.5:
-        return "up"
-    elif bear_score >= bull_score * 1.5:
-        return "down"
+    total = bull_score + bear_score
+    if total > 0:
+        result["bull_pct"] = round(bull_score / total * 100, 1)
+        result["bear_pct"] = round(bear_score / total * 100, 1)
 
-    return None
+    result["bull_score"] = round(bull_score)
+    result["bear_score"] = round(bear_score)
+
+    # 閾値 1.2x で判定 (旧: 1.5x)
+    if bull_score > 0 and bear_score > 0:
+        if bull_score >= bear_score * 1.2:
+            result["direction"] = "up"
+        elif bear_score >= bull_score * 1.2:
+            result["direction"] = "down"
+    elif bull_score > 0:
+        result["direction"] = "up"
+    elif bear_score > 0:
+        result["direction"] = "down"
+
+    return result
 
 
 # ============================================================

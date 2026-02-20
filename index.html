@@ -1229,6 +1229,7 @@
       <button class="modal-close" onclick="closeModal()">&#x2715;</button>
     </div>
     <div class="modal-summary" id="modalSummary"></div>
+    <div id="modalSentBar"></div>
     <div class="modal-tabs">
       <div class="modal-tab active-alert" id="tabAlert" onclick="switchTab('alerts')">&#x1F6A8; アラート履歴</div>
       <div class="modal-tab inactive" id="tabJudge" onclick="switchTab('judge')">&#x1F3AF; 判定履歴</div>
@@ -1667,7 +1668,15 @@ function updatePrices(tickers) {
       const pct = info.price.change_pct;
       const sign = ch >= 0 ? '+' : '';
       el.style.color = ch > 0 ? 'var(--price-up)' : ch < 0 ? 'var(--price-down)' : 'var(--price-flat)';
-      el.textContent = '$' + p.toFixed(2) + ' ' + sign + pct.toFixed(1) + '%';
+      // センチメントインジケーター (ドローでもスコア表示)
+      let sentTxt = '';
+      const s = info.sentiment;
+      if (s && typeof s === 'object' && (s.bull_score > 0 || s.bear_score > 0)) {
+        const dir = s.direction;
+        const arrow = dir === 'up' ? '\u25B2' : dir === 'down' ? '\u25BC' : '\u25C6';
+        sentTxt = ' ' + arrow + s.bull_pct + '/' + s.bear_pct;
+      }
+      el.textContent = '$' + p.toFixed(2) + ' ' + sign + pct.toFixed(1) + '%' + sentTxt;
     } else {
       el.style.color = 'var(--dim-text)';
       el.textContent = '---';
@@ -1842,9 +1851,10 @@ function renderPredBox(tickers, marketOpen, marketStatus, scanTS, scanCount) {
     html += logLine(detected, text, cls);
 
     // Save prediction for next evaluation
-    if (info.sentiment && info.price) {
+    const sentDir = info.sentiment && info.sentiment.direction ? info.sentiment.direction : info.sentiment;
+    if (sentDir && info.price) {
       predictions[sym] = {
-        direction: info.sentiment,
+        direction: sentDir,
         price: info.price.price,
         time: detected,
       };
@@ -2030,6 +2040,25 @@ function openTickerDetail(sym) {
     '<span class="modal-stat" style="color:' + (putCnt ? 'var(--price-down)' : 'var(--dim-text)') + '">PUT: ' + putCnt + '</span>' +
     '<span class="modal-stat" style="color:' + (sa.length ? 'var(--neon-orange)' : 'var(--dim-text)') + '">\u26A0 \u7570\u5E38\u677F: ' + sa.length + '</span>' +
     '<span class="modal-stat" style="color:' + (ia.length ? 'var(--neon-yellow)' : 'var(--dim-text)') + '">\u{1F575} \u30A4\u30F3\u30B5\u30A4\u30C0\u30FC: ' + ia.length + '</span>';
+
+  // センチメントバー (ドローでもスコア表示)
+  const sentBar = document.getElementById('modalSentBar');
+  if (sentBar) {
+    const s = info.sentiment;
+    if (s && typeof s === 'object' && (s.bull_score > 0 || s.bear_score > 0)) {
+      const dir = s.direction;
+      const label = dir === 'up' ? 'BULL' : dir === 'down' ? 'BEAR' : 'DRAW';
+      const labelColor = dir === 'up' ? 'var(--price-up)' : dir === 'down' ? 'var(--price-down)' : 'var(--neon-yellow)';
+      sentBar.innerHTML =
+        '<div style="display:flex;align-items:center;gap:8px;margin-top:6px">' +
+        '<span style="color:' + labelColor + ';font-weight:bold;font-size:12px">' + label + '</span>' +
+        '<div style="flex:1;height:8px;background:var(--neon-red);border-radius:4px;overflow:hidden">' +
+        '<div style="width:' + s.bull_pct + '%;height:100%;background:var(--price-up);border-radius:4px 0 0 4px"></div></div>' +
+        '<span style="font-size:11px;color:var(--dim-text)">B:' + s.bull_pct + '% / S:' + s.bear_pct + '%</span></div>';
+    } else {
+      sentBar.innerHTML = '';
+    }
+  }
 
   // Default tab
   switchTab('alerts');

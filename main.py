@@ -397,7 +397,7 @@ def run_full_scan() -> None:
         is_changed = current_fps != prev_fps
         last_fingerprints[ticker] = current_fps
 
-        # --- センチメント ---
+        # --- センチメント (dict: direction, bull_score, bear_score, bull_pct, bear_pct) ---
         current_price = ticker_info["price"]["price"] if ticker_info["price"] else None
         sentiment = get_sentiment_direction(whale_alerts, current_price)
         sentiment_text = format_sentiment_jp(ticker, whale_alerts, ticker_info["price"])
@@ -410,7 +410,7 @@ def run_full_scan() -> None:
         for a in whale_alerts:
             a["detected_at"] = now_str
             a["detected_date"] = now_date
-            a["sentiment"] = sentiment
+            a["sentiment"] = sentiment["direction"]
             a["text_jp"] = format_whale_alert_history_jp(a)
 
         for a in spoofing_alerts:
@@ -749,7 +749,7 @@ async def remove_ticker(request: Request):
 async def clear_predictions():
     """センチメント予測データをクリアする。"""
     for info in latest_tickers.values():
-        info["sentiment"] = None
+        info["sentiment"] = {"direction": None, "bull_score": 0, "bear_score": 0, "bull_pct": 50, "bear_pct": 50}
         info["sentiment_text"] = ""
         info["whale_alerts"] = []
     latest_summary["whale_count"] = 0
