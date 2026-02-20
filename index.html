@@ -1218,6 +1218,13 @@
       <div class="modal-header-left">
         <span class="modal-ticker" id="modalTicker">---</span>
         <span class="modal-price" id="modalPrice"></span>
+        <a id="modalDashLink" href="#" target="_blank" rel="noopener"
+           style="font-size:11px; padding:3px 10px; border:1px solid var(--neon-cyan); border-radius:6px;
+                  color:var(--neon-cyan); text-decoration:none; white-space:nowrap; margin-left:6px;
+                  transition:background 0.2s, color 0.2s;"
+           onmouseover="this.style.background='var(--neon-cyan)';this.style.color='#000'"
+           onmouseout="this.style.background='transparent';this.style.color='var(--neon-cyan)'"
+        >&#x1F4CA; ダッシュボード</a>
       </div>
       <button class="modal-close" onclick="closeModal()">&#x2715;</button>
     </div>
@@ -1986,6 +1993,8 @@ function updateMarquee(tickers) {
 /* ============================================================
    Ticker detail modal
    ============================================================ */
+const STOCK_DASHBOARD_URL = 'https://web-production-84368.up.railway.app';
+
 function openTickerDetail(sym) {
   currentModalTicker = sym;
   const info = latestTickers[sym];
@@ -1993,6 +2002,7 @@ function openTickerDetail(sym) {
 
   // Header: ticker + price
   document.getElementById('modalTicker').textContent = sym;
+  document.getElementById('modalDashLink').href = STOCK_DASHBOARD_URL + '?ticker=' + encodeURIComponent(sym);
   const mp = document.getElementById('modalPrice');
   if (info.price) {
     const ch = info.price.change;
