@@ -809,11 +809,13 @@
 
   /* ============================================ RESPONSIVE — Tablet */
   @media (max-width: 900px) {
-    .main-area { flex-direction: column; }
-    .left-panel { width: 100%; min-width: 100%; max-height: 260px; }
+    .main-area { flex-direction: column; overflow-y: auto; }
+    .left-panel { width: 100%; min-width: 100%; flex-shrink: 0; }
     .price-grid { grid-template-columns: 1fr 1fr 1fr; }
+    .price-grid-wrap { flex: none; max-height: 200px; }
     .header-sub { display: none; }
     .header-title { font-size: 16px; letter-spacing: 1px; }
+    .resize-h { display: none; }
   }
 
   /* ============================================ RESPONSIVE — Mobile */
@@ -1104,9 +1106,12 @@
     </div>
 
     <!-- Price grid -->
-    <div class="price-grid-wrap">
+    <div class="price-grid-wrap" id="priceGridWrap">
       <div class="price-grid" id="priceGrid"></div>
     </div>
+
+    <!-- Resize handle: price grid height -->
+    <div class="resize-v" id="resizePrice"></div>
 
     <!-- Summary -->
     <div class="action-box">
@@ -2632,11 +2637,44 @@ setInterval(() => { yoyoTick('predBox'); yoyoTick('alertBox'); }, YOYO_INTERVAL)
     document.addEventListener('mouseup', onUp);
   });
 
+  /* --- Price grid height resize --- */
+  const priceHandle = document.getElementById('resizePrice');
+  const priceWrap = document.getElementById('priceGridWrap');
+
+  priceHandle.addEventListener('mousedown', function(e) {
+    e.preventDefault();
+    priceHandle.classList.add('active');
+    document.body.classList.add('resizing-row');
+    const startY = e.clientY;
+    const startH = priceWrap.offsetHeight;
+
+    function onMove(e) {
+      const newH = Math.max(60, startH + (e.clientY - startY));
+      priceWrap.style.flex = 'none';
+      priceWrap.style.height = newH + 'px';
+      priceWrap.style.maxHeight = 'none';
+    }
+    function onUp() {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      priceHandle.classList.remove('active');
+      document.body.classList.remove('resizing-row');
+      const s = loadSizes(); s.priceH = priceWrap.offsetHeight; saveSizes(s);
+    }
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
+
   /* --- Restore saved sizes --- */
   const saved = loadSizes();
   if (saved.leftW) {
     leftPanel.style.width = saved.leftW + 'px';
     leftPanel.style.minWidth = saved.leftW + 'px';
+  }
+  if (saved.priceH) {
+    priceWrap.style.flex = 'none';
+    priceWrap.style.height = saved.priceH + 'px';
+    priceWrap.style.maxHeight = 'none';
   }
   if (saved.predH && saved.alertH) {
     predSec.style.flex = 'none';
